@@ -246,75 +246,32 @@ fun2tax_sankey <- function(pathway_sdaa_result, pathway = c("KO", "EC", "MetaCyc
   sankey_df <- style$edges
   color_scale <- style$scale
 
+  if (missing(margin))
+    margin <- list(top = 10, right = 140, bottom = 10, left = 160)
   p <- networkD3::sankeyNetwork(Links = sankey_df, Nodes = nodes, Source = "source_id", Target = "target_id",
     Value = "value", NodeID = "name", LinkGroup = "link_group", NodeGroup = "node_group", colourScale = color_scale,
-    fontSize = 18, nodeWidth = 30, sinksRight = TRUE, margin = margin, height = height, width = width)
+    fontSize = 18, nodeWidth = 28, sinksRight = TRUE, margin = margin,
+    height = if (missing(height)) NULL else height, width = if (missing(width)) NULL else width)
 
   p$x$microfun_colours <- nodes[c("name", "side", "kind", "category", "colour")]
 
   if (label_left_sources) {
     p <- htmlwidgets::onRender(p, "
-    function(el, x){
-      var fontSize = 18,  // keep in sync with R
-          maxWidth = 220; // wrap width in px for LEFT labels
-
-      var svg = d3.select(el).select('svg');
-
-      // set anchors & x offsets (as you had)
-      svg.selectAll('.node text')
-        .attr('text-anchor', function(d){
-          var isLeft = (d.side === 'left') || (d.x0 === 0 || d.x === 0);
-          return isLeft ? 'end' : 'start';
-        })
-        .attr('x', function(d){
-          var w = (d.x1!==undefined && d.x0!==undefined) ? (d.x1 - d.x0)
-                  : (d.dx!==undefined ? d.dx : 24);
-          var isLeft = (d.side === 'left') || (d.x0 === 0 || d.x === 0);
-          return isLeft ? -10 : (w + 10);
-        });
-
-      // wrap LEFT labels only
-      svg.selectAll('.node')
-        .filter(function(d){ return (d.side === 'left') || (d.x0 === 0 || d.x === 0); })
-        .select('text')
-        .each(function(d){
-          var text = d3.select(this),
-              words = (text.text() || '').split(/\\s+/).filter(Boolean),
-              line = [], lineNumber = 0,
-              lineHeight = 1.2, // ems
-              y = (d.dy !== undefined) ? d.dy / 2 : 0,
-              x = +text.attr('x'),
-              anchor = text.attr('text-anchor');
-
-          text.text(null);
-          var tspan = text.append('tspan')
-                          .attr('x', x)
-                          .attr('y', y)
-                          .attr('dy', 0 + 'em')
-                          .attr('text-anchor', anchor);
-
-          for (var i=0; i<words.length; ++i) {
-            line.push(words[i]);
-            tspan.text(line.join(' '));
-            if (tspan.node().getComputedTextLength() > maxWidth) {
-              line.pop();
-              tspan.text(line.join(' '));
-              line = [words[i]];
-              ++lineNumber;
-              tspan = text.append('tspan')
-                          .attr('x', x)
-                          .attr('y', y)
-                          .attr('dy', lineNumber * lineHeight + 'em')
-                          .attr('text-anchor', anchor)
-                          .text(words[i]);
-            }
-          }
-        });
-
-      // tooltip with full label on hover
-      svg.selectAll('.node').append('title').text(function(d){ return d.name; });
-    }
-  ")
+      function(el, x){
+        var svg = d3.select(el).select('svg');
+        svg.selectAll('.node text')
+          .attr('text-anchor', function(d){
+            var isLeft = (d.side === 'left') || (d.x0 === 0 || d.x === 0);
+            return isLeft ? 'end' : 'start';
+          })
+          .attr('x', function(d){
+            var w = (d.x1 !== undefined && d.x0 !== undefined) ? (d.x1 - d.x0)
+                    : (d.dx !== undefined ? d.dx : 24);
+            var isLeft = (d.side === 'left') || (d.x0 === 0 || d.x === 0);
+            return isLeft ? -6 : (w + 6);
+          });
+      }
+    ")
   }
 
   p$x$microfun_taxon_level <- taxon_level

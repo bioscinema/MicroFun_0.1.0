@@ -116,7 +116,7 @@
 #'   x_lab = "description"
 #' )
 #' }
-utils::globalVariables(c("group", "name", "value", "feature", "negative_log10_p", "group_nonsense", "nonsense", "pathway_class", "p_adjust", "log_2_fold_change", "transform_sample_counts", "column_to_rownames", "txtProgressBar", "setTxtProgressBar", "utils"))
+utils::globalVariables(c("group", "name", "value", "feature", "negative_log10_p", "group_nonsense", "nonsense", "pathway_class", "p_adjust", "log_2_fold_change", "transform_sample_counts", "column_to_rownames", "txtProgressBar", "setTxtProgressBar", "utils", "p_label"))
 pathway_errorbar <-
   function(abundance,
            daa_results_df,
@@ -154,7 +154,10 @@ pathway_errorbar <-
     sig_features <- sum(daa_results_df$p_adjust < 0.05)
 
     # Identify pathways with missing annotation
-    missing_pathways <- daa_results_df[is.na(daa_results_df$pathway_name), "feature"]
+    label_column <- if (is.null(x_lab)) {
+      if (ko_to_kegg) "pathway_name" else "description"
+    } else x_lab
+    missing_pathways <- daa_results_df$feature[is.na(daa_results_df[[label_column]])]
 
     # Inform the user about the missing annotations
     if(length(missing_pathways) > 0) {
@@ -176,27 +179,12 @@ pathway_errorbar <-
     }
 
     # Exclude rows with missing pathway annotation
-    daa_results_df <- daa_results_df[!is.na(daa_results_df[,x_lab]),]
-
-    if (is.null(x_lab)){
-      if (ko_to_kegg == TRUE){
-        x_lab <- "pathway_name"
-      }else{
-        x_lab <- "description"
-      }
-
-      if (is.null(daa_results_df$pathway_name)&is.null(daa_results_df$description)){
-        message(
-          "Please utilize the 'pathway_annotation' function to annotate the 'daa_results_df' data frame."
-        )
-      }
-    }
-
-    if (!(x_lab %in% colnames(daa_results_df))){
-      message(
-        "The 'x_lab' you defined does not exist as a column in the 'daa_results_df' data frame."
-      )
-    }
+    x_lab <- label_column
+    if (!x_lab %in% names(daa_results_df))
+      stop("The x_lab column '", x_lab, "' is missing. Provide it or annotate the DAA results.")
+    if (ko_to_kegg && !"pathway_class" %in% names(daa_results_df))
+      stop("KEGG results require a 'pathway_class' column.")
+    daa_results_df <- daa_results_df[!is.na(daa_results_df[[x_lab]]), , drop = FALSE]
 
     if (nlevels(factor(daa_results_df$method)) != 1) {
       stop(
@@ -210,14 +198,18 @@ pathway_errorbar <-
       )
     }
 
-    if (is.null(colors)) {
-      colors <- c("#B4CBE0", "#F5BB7C", "#6faa3e", "#e8a825", "#c973e6", "#ee6b3d", "#2db0a7", "#f25292")[1:nlevels(as.factor(Group))]
-    }
+    if (is.null(colors))
+      colors <- c("#B4CBE0", "#F5BB7C", "#6faa3e", "#e8a825", "#c973e6", "#ee6b3d", "#2db0a7", "#f25292")
+    Group <- droplevels(as.factor(Group))
+    if (is.null(names(colors)))
+      colors <- .microfun_extend_colours(colors, nlevels(Group))
+    if (nlevels(Group) != 2L)
+      p_value_bar <- FALSE
 
     errorbar_abundance_mat <- as.matrix(abundance)
 
     daa_results_filtered_df <-
-      daa_results_df[daa_results_df$p_adjust < p_values_threshold,]
+      daa_results_df[is.finite(daa_results_df$p_adjust) & daa_results_df$p_adjust < p_values_threshold, , drop = FALSE]
 
     if (!is.null(select)) {
       daa_results_filtered_sub_df <-
@@ -247,11 +239,14 @@ pathway_errorbar <-
       )
     }
     # Convert to relative abundance
-    relative_abundance_mat <- apply(t(errorbar_abundance_mat), 1, function(x)
-      x / sum(x))
+    relative_abundance_mat <- sweep(errorbar_abundance_mat, 2L, colSums(errorbar_abundance_mat), "/")
 
     # Subset to only include the features present in daa_results_filtered_sub_df$feature
-    sub_relative_abundance_mat <- relative_abundance_mat[rownames(relative_abundance_mat) %in% daa_results_filtered_sub_df$feature,]
+    daa_results_filtered_sub_df$feature <- as.character(daa_results_filtered_sub_df$feature)
+    if (!all(daa_results_filtered_sub_df$feature %in% rownames(relative_abundance_mat)) ||
+        anyDuplicated(daa_results_filtered_sub_df$feature))
+      stop("Each selected feature must occur once in the DAA results and match an abundance row.")
+    sub_relative_abundance_mat <- relative_abundance_mat[daa_results_filtered_sub_df$feature, , drop = FALSE]
 
     # Create a matrix for the error bars
     error_bar_matrix <- cbind(
@@ -279,10 +274,7 @@ pathway_errorbar <-
 
     error_bar_pivot_longer_tibble_summarised <-
       error_bar_pivot_longer_tibble %>% group_by(name, group) %>%
-      summarise(mean = mean(value), sd = stats::sd(value))
-
-    error_bar_pivot_longer_tibble_summarised <-
-      error_bar_pivot_longer_tibble_summarised %>% mutate(group2 = "nonsense")
+      summarise(mean = mean(value), sd = stats::sd(value), .groups = "drop")
 
     switch(
       order,
@@ -298,10 +290,8 @@ pathway_errorbar <-
           error_bar_pivot_longer_tibble_summarised_sub <-
             error_bar_pivot_longer_tibble_summarised[error_bar_pivot_longer_tibble_summarised$name ==
                                                        i,]
-          pro_group <-
-            error_bar_pivot_longer_tibble_summarised_sub[error_bar_pivot_longer_tibble_summarised_sub$mean ==
-                                                           max(error_bar_pivot_longer_tibble_summarised_sub$mean),]$group
-          pro_group <- as.vector(pro_group)
+          pro_group <- as.character(error_bar_pivot_longer_tibble_summarised_sub$group[
+            order(error_bar_pivot_longer_tibble_summarised_sub$mean, decreasing = TRUE, na.last = TRUE)[1L]])
           daa_results_filtered_sub_df[daa_results_filtered_sub_df$feature ==
                                         i,]$pro <- pro_group
         }
@@ -348,7 +338,7 @@ pathway_errorbar <-
 
     if (ko_to_kegg == FALSE){
       error_bar_pivot_longer_tibble_summarised_ordered[, x_lab] <-
-        rep(daa_results_filtered_sub_df[, x_lab], each = length(levels(
+        rep(daa_results_filtered_sub_df[[x_lab]], each = length(levels(
           factor(error_bar_pivot_longer_tibble_summarised_ordered$group)
         )))
     }
@@ -381,7 +371,7 @@ pathway_errorbar <-
       ggplot2::scale_color_manual(values = colors) +
       ggprism::theme_prism(base_size = 12) +
       ggplot2::scale_x_continuous(expand = c(0, 0)) +
-      ggplot2::scale_y_discrete(labels = rev(daa_results_filtered_sub_df[, x_lab])) +
+      ggplot2::scale_y_discrete(labels = rev(daa_results_filtered_sub_df[[x_lab]])) +
       ggplot2::labs(x = "Relative Abundance", y = NULL) +
       ggplot2::theme(
         axis.ticks.y = ggplot2::element_blank(),
@@ -420,19 +410,19 @@ pathway_errorbar <-
       pathway_class_group_mat <-
         daa_results_filtered_sub_df$pathway_class %>%
         table() %>%
-        data.frame() %>% column_to_rownames(".")
+        data.frame() %>% tibble::column_to_rownames(".")
       pathway_class_group <- data.frame(.= unique(daa_results_filtered_sub_df$pathway_class),Freq = pathway_class_group_mat[unique(daa_results_filtered_sub_df$pathway_class),])
       start <-
-        c(1, rev(pathway_class_group$Freq)[1:(length(pathway_class_group$Freq) - 1)]) %>%
+        c(1, head(rev(pathway_class_group$Freq), -1L)) %>%
         cumsum()
       end <- cumsum(rev(pathway_class_group$Freq))
       ymin <- start - 1 / 2
       ymax <- end + 1 / 2
       nPoints <- length(start)
-      pCol <- c("#D51F26","#272E6A","#208A42","#89288F","#F47D2B",
+      pCol <- .microfun_extend_colours(c("#D51F26","#272E6A","#208A42","#89288F","#F47D2B",
                  "#FEE500","#8A9FD1","#C06CAB","#E6C2DC","#90D5E4",
                  "#89C75F","#F37B7D","#9983BD","#D24B27","#3BBCA8",
-                 "#6E4B9E","#0C727C", "#7E1416","#D8A767","#3D3D3D")[1:nPoints]
+                 "#6E4B9E","#0C727C", "#7E1416","#D8A767","#3D3D3D"), nPoints, "function")
       pFill <- pCol
       for (i in 1:nPoints)  {
         bar_errorbar <- bar_errorbar +
@@ -482,8 +472,8 @@ pathway_errorbar <-
       ggplot2::theme(
         axis.ticks.y = ggplot2::element_blank(),
         axis.line.y = ggplot2::element_blank(),
-        axis.line.x = ggplot2::element_line(size = 0.5),
-        axis.ticks.x = ggplot2::element_line(size = 0.5),
+        axis.line.x = ggplot2::element_line(linewidth = 0.5),
+        axis.ticks.x = ggplot2::element_line(linewidth = 0.5),
         panel.grid.major.y = ggplot2::element_blank(),
         panel.grid.major.x = ggplot2::element_blank(),
         axis.text = ggplot2::element_text(size = 10, color = "black"),
@@ -498,7 +488,7 @@ pathway_errorbar <-
           color = "black",
           hjust = 0.5
         ),
-        legend.position = "non"
+        legend.position = "none"
       ) +
       ggplot2::coord_flip()
 
@@ -536,26 +526,31 @@ pathway_errorbar <-
           plot.margin = ggplot2::unit(c(0, 0.2, 0, 0), "cm"),
           axis.title.y =  ggplot2::element_blank(),
           axis.title.x = ggplot2::element_blank(),
-          legend.position = "non"
+          legend.position = "none"
         )
     }
-    daa_results_filtered_sub_df$p_adjust <-
-      as.character(daa_results_filtered_sub_df$p_adjust)
-    daa_results_filtered_sub_df$unique <-
-      nrow(daa_results_filtered_sub_df) - seq_len(nrow(daa_results_filtered_sub_df)) + 1
-    daa_results_filtered_sub_df$p_adjust <-
-      substr(daa_results_filtered_sub_df$p_adjust, 1, 5)
+    daa_results_filtered_sub_df$p_label <-
+      formatC(daa_results_filtered_sub_df$p_adjust, format = "e", digits = 3L)
+    p_label_size <- 3.5
+    p_label_width <- grid::grobWidth(grid::textGrob(
+      daa_results_filtered_sub_df$p_label,
+      gp = grid::gpar(fontfamily = "sans", fontface = "bold", fontsize = p_label_size * ggplot2::.pt)
+    )) + grid::unit(2, "mm")
+    panel_widths <- function(widths) {
+      grid::unit.c(grid::unit(widths, "null"), p_label_width)
+    }
     p_annotation <- daa_results_filtered_sub_df %>%
-      ggplot2::ggplot(ggplot2::aes(group_nonsense, p_adjust)) +
+      ggplot2::ggplot(ggplot2::aes(group_nonsense, feature)) +
       ggplot2::geom_text(
-        ggplot2::aes(group_nonsense, unique, label = p_adjust),
-        size = 3.5,
+        ggplot2::aes(label = p_label),
+        size = p_label_size,
         color = "black",
         fontface = "bold",
         family = "sans"
       ) +
       ggplot2::labs(y = "p-value (adjusted)") +
-      ggplot2::scale_y_discrete(position = "right") +
+      ggplot2::scale_y_discrete(position = "right",
+        limits = levels(daa_results_filtered_sub_df$feature), drop = FALSE) +
       ggprism::theme_prism(base_size = 12) +
       ggplot2::theme(
         axis.ticks = ggplot2::element_blank(),
@@ -571,28 +566,30 @@ pathway_errorbar <-
           vjust = 0
         ),
         axis.title.x = ggplot2::element_blank(),
-        legend.position = "non"
+        legend.position = "none"
       )
     if (p_value_bar == TRUE) {
       if (ko_to_kegg == TRUE) {
         combination_bar_plot <-
-          pathway_class_annotation + bar_errorbar + p_values_bar + p_annotation + patchwork::plot_layout(ncol = 4, widths =
-                                                                                                c(1, 1.2, 0.5, 0.1))
+          patchwork::wrap_plots(pathway_class_annotation, bar_errorbar, p_values_bar, p_annotation,
+            ncol = 4, widths = panel_widths(c(1, 1.2, 0.5)))
       }
       else{
         combination_bar_plot <-
-          bar_errorbar + p_values_bar + p_annotation + patchwork::plot_layout(ncol = 3, widths = c(2.3, 0.7, 0.3))
+          patchwork::wrap_plots(bar_errorbar, p_values_bar, p_annotation,
+            ncol = 3, widths = panel_widths(c(2.3, 0.7)))
       }
     }else{
       if (ko_to_kegg == TRUE) {
         combination_bar_plot <-
-          pathway_class_annotation + bar_errorbar + p_annotation + patchwork::plot_layout(ncol = 3, widths =
-                                                                                                           c(1, 1.2, 0.1))
+          patchwork::wrap_plots(pathway_class_annotation, bar_errorbar, p_annotation,
+            ncol = 3, widths = panel_widths(c(1, 1.2)))
       }
       else{
         combination_bar_plot <-
-          bar_errorbar + p_annotation + patchwork::plot_layout(ncol = 2, widths = c(2.5,  0.2))
+          patchwork::wrap_plots(bar_errorbar, p_annotation, ncol = 2, widths = panel_widths(2.5))
       }
     }
+    attr(combination_bar_plot, "microfun_min_height") <- (max(24, 4.3 * nrow(daa_results_filtered_sub_df)) + 50) / 25.4
     return(combination_bar_plot)
   }

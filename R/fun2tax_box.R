@@ -55,8 +55,10 @@ fun2tax_box <- function(
     pathway     = c("KO","EC","MetaCyc"),
     value_col   = NULL,
     wrap_width  = 36,
-    group_functions = TRUE
+    group_functions = TRUE,
+    top_n = Inf
 ){
+  .microfun_check_box_top_n(top_n)
   taxon_level <- .microfun_result_level(pathway_sdaa_result, taxon_level)
   .microfun_result_direction(pathway_sdaa_result, "function")
   # Match the functional namespace.
@@ -200,18 +202,25 @@ fun2tax_box <- function(
     long_sum <- meta[long_sum, on = "sample", nomatch = 0L]
     if (!group %in% names(long_sum)) next
     if (!nrow(long_sum)) next
+    if (is.finite(top_n)) {
+      top_levels <- .microfun_box_top_levels(long_sum, "level", group, top_n)
+      if (!length(top_levels)) next
+      keep_rows <- long_sum$level %chin% top_levels & !is.na(long_sum[[group]])
+      long_sum <- long_sum[keep_rows, ]
+      long_sum[, level := factor(level, levels = top_levels)]
+    }
 
     # cosmetics
-    long_sum[, level_wrapped := stringr::str_wrap(as.character(level), width = wrap_width)]
     long_sum[, abundance_log := log10(pmax(abundance, 0) + eps)]
     long_sum[[group]] <- as.factor(long_sum[[group]])
 
     p <- ggplot(
       long_sum,
-      aes(x = level_wrapped, y = abundance_log, fill = .data[[group]])
+      aes(x = level, y = abundance_log, fill = .data[[group]])
     ) +
       geom_boxplot(outlier.shape = 16, outlier.size = 0.8, alpha = 1) +
       scale_fill_manual(values = .microfun_group_colours(meta[[group]], pathway_sdaa_result)) +
+      scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = wrap_width)) +
       labs(
         title = glab,
         x = taxon_level,

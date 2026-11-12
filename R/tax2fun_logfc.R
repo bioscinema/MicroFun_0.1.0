@@ -70,13 +70,19 @@ plot_pathway_logfc_one <- function(df,
     filter(!is.na(logFC)) %>%
     mutate(label = stats::reorder(label, logFC))
 
+  effect_types <- if ("effect_type" %in% names(df)) {
+    unique(df$effect_type[!is.na(df$effect_type) & nzchar(df$effect_type)])
+  } else if ("method" %in% names(df) && identical(unique(as.character(df$method)), "Maaslin2")) {
+    "Maaslin2 AST coefficient"
+  }
+  effect_label <- if (length(effect_types) == 1L) effect_types else "logFC"
   g1 <- ggplot(df2, aes(x = label, y = logFC, fill = logFC > 0)) +
     geom_col(width = 0.8) +
     coord_flip() +
     geom_hline(yintercept = 0, linewidth = 0.4) +
     scale_fill_manual(values = c("FALSE" = "#B4CBE0", "TRUE" = "#F5BB7C"), guide = "none") +
     labs(
-      x = NULL, y = "logFC",
+      x = NULL, y = effect_label,
       title = if (is.null(title)) "" else title,
       subtitle = paste0(unique(df$group1), " vs ", unique(df$group2))
     ) +

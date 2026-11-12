@@ -4,18 +4,72 @@
 #'   nine colours). Direction colours belong to the plotting functions.
 #' @return A character vector of nine hexadecimal colours.
 #' @export
-microfun_palette <- function(side = c("taxa", "function")) {
+microfun_palette <- function(side = c("taxa", "function"), n = 9L) {
   side <- match.arg(side)
-  if (side == "taxa") {
+  base <- if (side == "taxa") {
     c("#B5C3D7", "#B6C9C0", "#F5D8B7", "#F1D0C6", "#DDAEAB", "#D0E0EF", "#E9CDDF", "#C8BFD9", "#E4E3BF")
   } else {
     c("#6E8FB2", "#7DA494", "#EAB67A", "#E5A79A", "#C16E71", "#ABC8E5", "#D8A0C1", "#9F8DB8", "#D0D08A")
   }
+  .microfun_extend_colours(base, n, side)
+}
+
+.microfun_extend_colours <- function(palette, n, side = "taxa") {
+  if (!is.numeric(n) || length(n) != 1L || !is.finite(n) || n < 0 || n != floor(n))
+    stop("n must be a non-negative integer.")
+  rgb <- grDevices::col2rgb(palette)
+  hex <- grDevices::rgb(rgb[1L, ], rgb[2L, ], rgb[3L, ], maxColorValue = 255)
+  keep <- !duplicated(hex)
+  palette <- unname(palette[keep])
+  if (n <= length(palette))
+    return(palette[seq_len(n)])
+
+  to_luv <- function(colours) {
+    grDevices::convertColor(t(grDevices::col2rgb(colours)) / 255, from = "sRGB", to = "Luv")
+  }
+  base_luv <- to_luv(hex[keep])
+  hue <- (atan2(base_luv[, 3L], base_luv[, 2L]) * 180 / pi) %% 360
+  lightness <- if (side == "taxa") seq(54, 89, by = 5) else seq(30, 75, by = 5)
+  grid <- expand.grid(hue = hue, chroma = c(18, 30, 44, 58, 72), lightness = lightness)
+  candidates <- unique(grDevices::hcl(grid$hue, grid$chroma, grid$lightness, fixup = FALSE))
+  candidates <- setdiff(candidates[!is.na(candidates)], hex[keep])
+  select_colours <- function(candidates, existing_luv, count) {
+    if (count == 0L)
+      return(character())
+    candidate_luv <- to_luv(candidates)
+    distance <- function(colour) rowSums(sweep(candidate_luv, 2L, colour, "-")^2)
+    nearest <- rep(Inf, length(candidates))
+    for (i in seq_len(nrow(existing_luv)))
+      nearest <- pmin(nearest, distance(existing_luv[i, ]))
+    selected <- character(count)
+    for (i in seq_along(selected)) {
+      best <- which.max(nearest)
+      selected[i] <- candidates[best]
+      nearest <- pmin(nearest, distance(candidate_luv[best, ]))
+      nearest[best] <- -Inf
+    }
+    selected
+  }
+  count <- n - length(palette)
+  added <- select_colours(candidates, base_luv, min(count, length(candidates)))
+  if (length(added) == count)
+    return(c(palette, added))
+
+  grid <- expand.grid(hue = seq(0, 354, by = 6), chroma = seq(12, 84, by = 6),
+    lightness = seq(min(lightness), max(lightness), by = 2))
+  extra <- grDevices::hcl(grid$hue, grid$chroma, grid$lightness, fixup = FALSE)
+  extra <- setdiff(unique(extra[!is.na(extra)]), c(hex[keep], added))
+  remaining <- count - length(added)
+  if (length(extra) < remaining)
+    stop("Too many categories for the available colour range.")
+  c(palette, added, select_colours(extra, to_luv(c(hex[keep], added)), remaining))
 }
 
 # Named palettes pin category colours across independently subsetted figures.
 .microfun_category_colours <- function(labels, palette, side = "taxa") {
   labels <- sort(unique(as.character(labels)))
+  if (!length(labels))
+    return(stats::setNames(character(), character()))
   if (anyNA(labels) || any(!nzchar(labels)))
     stop("Colour categories must be non-empty.")
   if (!is.character(palette) || !length(palette) || anyNA(palette))
@@ -41,10 +95,7 @@ microfun_palette <- function(side = c("taxa", "function")) {
     slots <- seq_along(labels)
     n_needed <- length(labels)
   }
-  if (n_needed > length(palette))
-    warning("More categories than palette colours; colours repeat. Use category labels or a larger named palette.",
-      call. = FALSE)
-  stats::setNames(rep(palette, length.out = n_needed)[slots], labels)
+  stats::setNames(.microfun_extend_colours(palette, n_needed, side)[slots], labels)
 }
 
 # Colour identities are separate from displayed names and edge directions.

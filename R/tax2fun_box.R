@@ -38,8 +38,10 @@
 #' )
 #' plot_list$Bacteroides  # View boxplot for Bacteroides genus
 #' }
-tax2fun_box <- function(stratified_path, pathway_sdaa_result, physeq, taxon_level = NULL, group, kegg_map = NULL) {
+tax2fun_box <- function(stratified_path, pathway_sdaa_result, physeq, taxon_level = NULL, group, kegg_map = NULL,
+                       top_n = Inf) {
 
+  .microfun_check_box_top_n(top_n)
   taxon_level <- .microfun_result_level(pathway_sdaa_result, taxon_level)
   .microfun_result_direction(pathway_sdaa_result, "taxa")
   # Load stratified Picrust2 output
@@ -159,7 +161,14 @@ tax2fun_box <- function(stratified_path, pathway_sdaa_result, physeq, taxon_leve
     genus_df_long <- merge(sample_grid, genus_df_long, by = c("feature", "sample"), all.x = TRUE)
     genus_df_long$abundance[is.na(genus_df_long$abundance)] <- 0
     genus_df_long <- merge(genus_df_long, meta, by = "sample")
-    genus_df_long$pathway_name <- unname(labels[genus_df_long$feature])
+    if (is.finite(top_n)) {
+      top_features <- .microfun_box_top_levels(genus_df_long, "feature", group, top_n)
+      if (!length(top_features)) next
+      keep_rows <- genus_df_long$feature %in% top_features & !is.na(genus_df_long[[group]])
+      genus_df_long <- genus_df_long[keep_rows, ]
+      genus_df_long$feature <- factor(genus_df_long$feature, levels = top_features)
+    }
+    genus_df_long$pathway_name <- unname(labels[as.character(genus_df_long$feature)])
 
     p <- ggplot(genus_df_long, aes(x = feature, y = abundance, fill = .data[[group]])) +
       geom_boxplot(alpha = 1) +

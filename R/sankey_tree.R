@@ -298,7 +298,7 @@
     stop("Tree Sankey requires finite effects and finite positive link weights.")
   if (anyNA(edges$function_name) || any(!nzchar(edges$function_name)))
     stop("Function labels must be non-empty.")
-  opts <- list(title = "", subtitle = "", font_size = 16, font_family = "Arial, Helvetica, sans-serif", tree_width = 450, node_width = 18, node_gap = 20,
+  opts <- list(title = "", subtitle = "", font_size = 16, font_family = "Arial, Helvetica, sans-serif", tree_width = 450, node_width = 18, node_gap = NULL,
     show_tip_labels = FALSE, tree_colour = "#6D7785", link_opacity = 0.48, aggregate_links = TRUE,
     collapse_clades = TRUE, bundle_mapping = TRUE, show_footer = FALSE)
   if (!is.list(tree_options) || (length(tree_options) && (is.null(names(tree_options)) || any(!nzchar(names(tree_options))))))
@@ -307,7 +307,10 @@
   if (length(unknown))
     stop("Unknown tree_options: ", paste(unknown, collapse = ", "))
   opts[names(tree_options)] <- tree_options
-  for (k in c("font_size", "tree_width", "node_width", "node_gap")) if (length(opts[[k]]) != 1L ||
+  positive_options <- c("font_size", "tree_width", "node_width")
+  if (!is.null(opts$node_gap))
+    positive_options <- c(positive_options, "node_gap")
+  for (k in positive_options) if (length(opts[[k]]) != 1L ||
     !is.numeric(opts[[k]]) || !is.finite(opts[[k]]) || opts[[k]] <= 0)
     stop("Invalid tree_options$", k)
   if (!is.numeric(opts$link_opacity) || length(opts$link_opacity) != 1 || !is.finite(opts$link_opacity) ||
@@ -345,14 +348,17 @@
   nl <- length(display$terminals)
   fs <- opts$font_size
   min_width <- opts$tree_width + 1000
-  label_lines <- function(labels, chars) max(vapply(labels, function(z) {
-    w <- strwrap(z, width = chars)
-    if (!length(w)) w <- z
-    min(3L, sum(pmax(1L, ceiling(nchar(w)/chars))))
-  }, numeric(1)))
-  tax_lines <- label_lines(taxa, max(12, floor(255/(fs * 0.58))))
-  fun_lines <- label_lines(functions, max(12, floor(265/(fs * 0.58))))
-  gap <- max(opts$node_gap, fs * 1.12 * max(tax_lines, fun_lines) + 8)
+  gap <- opts$node_gap
+  if (is.null(gap)) {
+    label_lines <- function(labels, chars) max(vapply(labels, function(z) {
+      w <- strwrap(z, width = chars)
+      if (!length(w)) w <- z
+      min(3L, sum(pmax(1L, ceiling(nchar(w)/chars))))
+    }, numeric(1)))
+    tax_lines <- label_lines(taxa, max(12, floor(255/(fs * 0.58))))
+    fun_lines <- label_lines(functions, max(12, floor(265/(fs * 0.58))))
+    gap <- max(20, fs * 1.12 * max(tax_lines, fun_lines) + 8)
+  }
   header <- 35 + if (nzchar(opts$title))
     38 else 0
   header <- header + if (nzchar(opts$subtitle))
@@ -630,7 +636,8 @@
   x <- list(svg = paste(svg, collapse = "\n"), microfun_tree = tree, microfun_edges = raw_edges, microfun_ribbons = edges,
     microfun_colours = style$nodes[c("name", "side", "kind", "category", "colour")], dimensions = list(width = W,
       height = H), settings = list(tree_mode = tree_mode, taxa_on_left = taxa_on_left, node_color = node_color,
-      taxon_level = taxon_level, tree_options = opts, phylogeny_order = if (tree_mode == "phylogeny") phylogeny_order else NULL),
+      taxon_level = taxon_level, tree_options = opts, node_gap = gap,
+      phylogeny_order = if (tree_mode == "phylogeny") phylogeny_order else NULL),
     title = opts$title)
   htmlwidgets::createWidget("microfunTreeSankey", x, width = W, height = H, package = "MicroFun", sizingPolicy = htmlwidgets::sizingPolicy(padding = 0,
     browser.fill = FALSE, viewer.fill = FALSE), preRenderHook = function(widget) {
@@ -749,6 +756,8 @@ redraw_sankey <- function(x, tree_options = list(), width = NULL, height = NULL)
   settings <- old$settings
   opts <- utils::modifyList(settings$tree_options, list(title = "", subtitle = "", show_footer = FALSE,
     aggregate_links = TRUE, collapse_clades = TRUE, bundle_mapping = TRUE))
+  if (is.null(settings$node_gap) && identical(opts$node_gap, 20))
+    opts$node_gap <- NULL
   opts <- utils::modifyList(opts, tree_options)
   colours <- settings$node_color
   if (is.null(colours))

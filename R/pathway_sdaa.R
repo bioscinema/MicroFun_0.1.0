@@ -107,7 +107,12 @@
 #' @export
 pathway_sdaa <- function(stratified_path, physeq, taxon_level = "Genus", group, daa_method = "Maaslin2",
   p.adjust.method = "none", threshold = 0.05, direction = "taxa", pathway = "KO", confounders = NULL,
-  reference = NULL, min_samples = 5, verbose = TRUE, kegg_map = NULL) {
+  reference = NULL, min_samples = 5, verbose = TRUE, kegg_map = NULL, maaslin2_transform = "AST") {
+  if (daa_method == "Maaslin2") {
+    maaslin2_transform <- .microfun_maaslin2_transform(maaslin2_transform)
+  } else if (!missing(maaslin2_transform)) {
+    stop("maaslin2_transform applies only when daa_method is 'Maaslin2'.")
+  }
   stopifnot(direction %in% c("taxa", "function"))
   stopifnot(pathway %in% c("KO", "EC", "MetaCyc", "KEGG"))
   if (pathway == "KEGG" && direction != "taxa")
@@ -382,6 +387,13 @@ pathway_sdaa <- function(stratified_path, physeq, taxon_level = "Genus", group, 
   if (!length(result_list_subset)) {
     stop("No eligible ", direction, " tables after filtering by groups and sample counts.")
   }
+  run_daa <- function(abundance, metadata) {
+    args <- list(abundance = abundance, metadata = metadata, group = group, daa_method = daa_method,
+      p.adjust = p.adjust.method, confounder = conf_names, reference = reference)
+    if (daa_method == "Maaslin2")
+      args$maaslin2_transform <- maaslin2_transform
+    do.call(pathway_daa, args)
+  }
 
   # Run differential analysis and annotate each result.
   if (verbose)
@@ -439,8 +451,7 @@ pathway_sdaa <- function(stratified_path, physeq, taxon_level = "Genus", group, 
       mysam_subset[[group]] <- as.factor(mysam_subset[[group]])
 
       # DAA
-      result <- pathway_daa(abundance = ko_abun, metadata = mysam_subset, group = group, daa_method = daa_method,
-        p.adjust = p.adjust.method, confounder = conf_names, reference = reference)
+      result <- run_daa(ko_abun, mysam_subset)
       if ("feature" %in% colnames(result)) {
         result <- result[!is.na(result$feature) & result$feature != "", ]
       }
@@ -464,8 +475,7 @@ pathway_sdaa <- function(stratified_path, physeq, taxon_level = "Genus", group, 
       mysam_subset[[group]] <- as.factor(mysam_subset[[group]])
 
       # DAA directly on function-level abundance
-      result <- pathway_daa(abundance = df1, metadata = mysam_subset, group = group, daa_method = daa_method,
-        p.adjust = p.adjust.method, confounder = conf_names, reference = reference)
+      result <- run_daa(df1, mysam_subset)
       if ("feature" %in% colnames(result)) {
         result <- result[!is.na(result$feature) & result$feature != "", ]
       }
@@ -496,6 +506,7 @@ pathway_sdaa <- function(stratified_path, physeq, taxon_level = "Genus", group, 
   attr(all_daa_results, "microfun") <- list(taxon_level = taxon_level, direction = direction, group = group,
     pathway = pathway, function_level = if (map_ko) "KEGG" else pathway,
     samples = rownames(mysam), daa_method = daa_method, reference = reference, p.adjust.method = p.adjust.method,
-    value_col = value_col, kegg_map = if (map_ko) kegg_map)
+    value_col = value_col, kegg_map = if (map_ko) kegg_map,
+    maaslin2_transform = if (daa_method == "Maaslin2") maaslin2_transform)
   return(all_daa_results)
 }

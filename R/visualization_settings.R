@@ -33,7 +33,24 @@
   if (length(reference) == 1L && reference %in% lev) lev <- c(reference, setdiff(lev, reference))
   cols <- c(unname(.microfun_direction_colours()[c("Down", "Up")]),
     setdiff(microfun_palette("taxa"), c("#B4CBE0", "#F5BB7C")))
-  stats::setNames(rep(cols, length.out = length(lev)), lev)
+  stats::setNames(.microfun_extend_colours(cols, length(lev)), lev)
+}
+
+.microfun_check_box_top_n <- function(top_n) {
+  if (!is.numeric(top_n) || length(top_n) != 1L || is.na(top_n) ||
+      top_n < 1 || (is.finite(top_n) && top_n != floor(top_n)))
+    stop("top_n must be a positive integer or Inf.")
+}
+
+.microfun_box_top_levels <- function(data, feature_col, group_col, top_n) {
+  keep <- !is.na(data[[group_col]])
+  if (!any(keep))
+    return(character())
+  group_means <- stats::aggregate(data$abundance[keep],
+    list(feature = data[[feature_col]][keep], group = data[[group_col]][keep]), mean)
+  scores <- stats::aggregate(group_means$x, list(feature = group_means$feature), mean)
+  ranked <- scores$feature[order(-scores$x, scores$feature)]
+  utils::head(as.character(ranked), top_n)
 }
 
 # Prefer explicit names, then result annotations, then bundled references.

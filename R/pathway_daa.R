@@ -120,7 +120,12 @@ NULL
 #'
 #' @export
 pathway_daa <- function(abundance, metadata, group, confounder = NULL, daa_method = "ALDEx2",
-                        select = NULL, p.adjust = "BH", reference = NULL, ...) {
+                        select = NULL, p.adjust = "BH", reference = NULL, ..., maaslin2_transform = "AST") {
+  if (daa_method == "Maaslin2") {
+    maaslin2_transform <- .microfun_maaslin2_transform(maaslin2_transform)
+  } else if (!missing(maaslin2_transform)) {
+    stop("maaslin2_transform applies only when daa_method is 'Maaslin2'.")
+  }
   # Check if the requested DAA method package is available
   method_packages <- list(
     "ALDEx2" = "ALDEx2",
@@ -225,7 +230,8 @@ pathway_daa <- function(abundance, metadata, group, confounder = NULL, daa_metho
     "limma voom" = perform_limma_voom_analysis(abundance_mat, Group, reference, Level, length_Level),
     "edgeR" = perform_edger_analysis(abundance_mat, Group, Level, length_Level),
     "metagenomeSeq" = perform_metagenomeseq_analysis(abundance_mat, metadata, group, Level),
-    "Maaslin2" = perform_maaslin2_analysis(abundance_mat, metadata, group, confounder, reference, Level, length_Level),
+    "Maaslin2" = perform_maaslin2_analysis(abundance_mat, metadata, group, confounder, reference, Level,
+      length_Level, maaslin2_transform),
     "Lefser" = perform_lefser_analysis(abundance_mat, metadata, group, Level)
   )
 
@@ -530,7 +536,15 @@ perform_metagenomeseq_analysis <- function(abundance_mat, metadata, group, Level
 }
 
 # Helper function: Perform Maaslin2 analysis
-perform_maaslin2_analysis <- function(abundance_mat, metadata, group, confounder, reference, Level, length_Level) {
+.microfun_maaslin2_transform <- function(transform) {
+  choices <- c("AST", "LOG", "LOGIT", "NONE")
+  if (!is.character(transform) || length(transform) != 1L || is.na(transform) || !transform %in% choices)
+    stop("maaslin2_transform must be one of: ", paste(choices, collapse = ", "), ".")
+  transform
+}
+
+perform_maaslin2_analysis <- function(abundance_mat, metadata, group, confounder, reference, Level, length_Level,
+                                     transform = "AST") {
   message("Running Maaslin2 analysis...")
 
   # Check if Maaslin2 is available
@@ -555,7 +569,7 @@ perform_maaslin2_analysis <- function(abundance_mat, metadata, group, confounder
       input_data = abundance_mat_t,
       input_metadata = metadata,
       output = output_dir,
-      transform = "AST",
+      transform = transform,
       fixed_effects = c(group, confounder),
       reference = paste0(group, ",", if (is.null(reference)) Level[1] else reference),
       normalization = "TSS",
@@ -590,7 +604,7 @@ perform_maaslin2_analysis <- function(abundance_mat, metadata, group, confounder
       feature = as.character(mr$feature), method = "Maaslin2",
       group1 = rep(ref_level, nrow(mr)), group2 = as.character(mr$value),
       p_values = mr$pval, logFC = mr$coef,
-      effect_type = rep("Maaslin2 AST coefficient", nrow(mr)),
+      effect_type = rep(paste("Maaslin2", transform, "coefficient"), nrow(mr)),
       stringsAsFactors = FALSE
     )
   } else {
