@@ -1,8 +1,12 @@
-# MicroFun
+# MicroFun <img src="man/figures/logo.png" align="right" width="160" alt="MicroFun logo" />
 
 MicroFun is an R package for differential analysis and visualization of taxon-stratified microbial functional profiles predicted by PICRUSt2. It integrates functional contribution tables with `phyloseq` data to explore predicted functions within taxa (taxon-to-function) and taxonomic contributors to functions (function-to-taxon).
 
 [Documentation and tutorials](https://bioscinema.github.io/MicroFun_website_tutorials/) · [Study data](https://bioscinema.github.io/MicroFun_website_tutorials/articles/study-data.html) · [GitHub](https://github.com/bioscinema/MicroFun_0.1.0)
+
+## Graphical abstract
+
+![MicroFun graphical abstract](man/figures/microfun_abstract.png)
 
 ## Features
 
@@ -58,7 +62,11 @@ The [Standard demonstration](https://bioscinema.github.io/MicroFun_website_tutor
 
 ## Authors
 
-Zilin Li, Yaoran Yu, Chenyu Liu, Ruitao Liu and Liangliang Zhang. Maintainer: [Zilin Li](mailto:zxl1715@case.edu).
+Ruitao Liu, Yaoran Yu, Chenyu Liu, Zilin Li and Liangliang Zhang.
+
+Corresponding author: [Liangliang Zhang](mailto:lxz716@case.edu).
+
+Maintainers: [Yaoran Yu](mailto:yxy1625@case.edu), [Chenyu Liu](mailto:cxl1299@case.edu) and [Zilin Li](mailto:zxl1715@case.edu).
 
 ## License
 

@@ -3,11 +3,15 @@ Type: Package
 Title: Analysis and Visualization of Taxon-Stratified 'PICRUSt2' Data
 Version: 0.1.0
 Authors@R: c(
-    person("Zilin", "Li", email = "zxl1715@case.edu", role = c("aut", "cre")),
-    person("Yaoran", "Yu", email = "yxy1625@case.edu", role = "aut"),
-    person("Chenyu", "Liu", email = "cxl1299@case.edu", role = "aut"),
     person("Ruitao", "Liu", email = "rxl761@case.edu", role = "aut"),
-    person("Liangliang", "Zhang", email = "lxz716@case.edu", role = c("aut", "cph")))
+    person("Yaoran", "Yu", email = "yxy1625@case.edu", role = "aut",
+           comment = "Maintainer"),
+    person("Chenyu", "Liu", email = "cxl1299@case.edu", role = "aut",
+           comment = "Maintainer"),
+    person("Zilin", "Li", email = "zxl1715@case.edu", role = c("aut", "cre"),
+           comment = "Maintainer"),
+    person("Liangliang", "Zhang", email = "lxz716@case.edu", role = c("aut", "cph"),
+           comment = "Corresponding author"))
 Description: Provides taxon-resolved analysis of functional profiles predicted
     by 'PICRUSt2'. Integrates stratified functional contribution tables with
     'phyloseq' data for bidirectional differential analysis of taxonomic and
@@ -29,9 +33,12 @@ Imports: ALDEx2, aplot, ape, DESeq2, dplyr, edgeR, GGally, ggplot2,
 Depends: R (>= 3.5.0)
 Suggests: rsvg, qpdf, KEGGREST, R.utils, svglite
 NeedsCompilation: no
-Author: Zilin Li [aut, cre],
-    Yaoran Yu [aut],
-    Chenyu Liu [aut],
-    Ruitao Liu [aut],
-    Liangliang Zhang [aut, cph]
+Author: Ruitao Liu [aut],
+    Yaoran Yu [aut] (Maintainer),
+    Chenyu Liu [aut] (Maintainer),
+    Zilin Li [aut, cre] (Maintainer),
+    Liangliang Zhang [aut, cph] (Corresponding author)
 Maintainer: Zilin Li <zxl1715@case.edu>
+Maintainers: Yaoran Yu <yxy1625@case.edu>,
+    Chenyu Liu <cxl1299@case.edu>,
+    Zilin Li <zxl1715@case.edu>
