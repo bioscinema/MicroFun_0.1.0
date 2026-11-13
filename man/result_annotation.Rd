@@ -2,23 +2,21 @@
 % Please edit documentation in R/result_annotation.R
 \name{result_annotation}
 \alias{result_annotation}
-\title{Annotate Significant Features from Differential Abundance Results from function direction}
+\title{Filter significant function-oriented differential results}
 \usage{
 result_annotation(daa_result, threshold = 0.05)
 }
 \arguments{
-\item{daa_result}{A data frame containing the results of a differential abundance analysis. 
+\item{daa_result}{A data frame containing the results of a differential abundance analysis.
 Must include at least the columns \code{feature} and \code{p_adjust}.}
 
-\item{threshold}{A numeric value specifying the adjusted p-value cutoff for significance. 
+\item{threshold}{A numeric value specifying the adjusted p-value cutoff for significance.
 Defaults to \code{0.05}.}
 }
 \value{
-A data frame of significant features with adjusted p-values below the given threshold, 
-  sorted by ascending p-value.
+A data frame with the input columns, restricted to \code{p_adjust < threshold} and sorted in ascending adjusted p-value order.
 }
 \description{
-This function filters and returns statistically significant features from a differential 
-abundance analysis (DAA) result based on an adjusted p-value threshold.
+Internal helper that retains rows with non-missing adjusted p-values below a threshold and sorts them by adjusted p-value. It does not add functional annotations.
 }
 \keyword{internal}

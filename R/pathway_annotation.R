@@ -456,65 +456,31 @@ annotate_pathways <- function(data, pathway_type, ref_data) {
   data
 }
 
-#' Pathway information annotation
+#' Annotate functional abundance files or differential results
 #'
-#' @description
-#' This function serves two main purposes:
-#' 1. Annotating pathway information from PICRUSt2 output files.
-#' 2. Annotating pathway information from the output of `pathway_daa` function, and converting KO abundance to KEGG pathway abundance when `ko_to_kegg` is set to TRUE.
+#' Add bundled KO, EC or MetaCyc descriptions, or retrieve KEGG pathway annotations for differential results. This function annotates identifiers; it does not aggregate an abundance matrix.
 #'
-#' @param file A character string, the path to the PICRUSt2 output file.
-#' @param pathway A character string, the type of pathway to annotate. Options are "KO", "EC", or "MetaCyc".
-#' @param daa_results_df A data frame, the output from `pathway_daa` function.
-#' @param ko_to_kegg A logical, decide if convert KO abundance to KEGG pathway abundance. Default is FALSE. Set to TRUE when using the function for the second use case.
-#' @param organism A character string specifying the KEGG organism code (e.g., 'hsa' for human, 'eco' for E. coli). Default is NULL, which retrieves generic KO information not specific to any organism. Only used when ko_to_kegg is TRUE.
-#' @param threshold numeric. Adjusted p-value (or score) cutoff used to retain, default is 0.05
-#'
-#' @return A data frame with annotated pathway information.
-#' If using the function for the first use case, the output data frame will include the following columns:
-#' \itemize{
-#'   \item \code{id}: The pathway ID.
-#'   \item \code{description}: The description of the pathway.
-#'   \item \code{sample1, sample2, ...}: Abundance values for each sample.
-#' }
-#'
-#' If \code{ko_to_kegg} is set to TRUE, the output data frame will also include the following columns:
-#' \itemize{
-#'   \item \code{pathway_name}: The name of the KEGG pathway.
-#'   \item \code{pathway_description}: The description of the KEGG pathway.
-#'   \item \code{pathway_class}: The class of the KEGG pathway.
-#'   \item \code{pathway_map}: The KEGG pathway map ID.
-#' }
-#'
-#' When \code{ko_to_kegg} is TRUE, the function queries the KEGG database for pathway information. By default (organism = NULL), it retrieves generic KO information that is not specific to any organism. If you are interested in organism-specific pathway information, you can specify the KEGG organism code using the \code{organism} parameter.
-#'
-#' @examples
-#' \dontrun{
-#' # Example 1: Annotate pathways from PICRUSt2 output file
-#' pathway_annotation(file = "path/to/picrust2_output.tsv",
-#'                               pathway = "KO")
-#'
-#' # Example 2: Annotate pathways from pathway_daa output
-#' # and converting KO abundance to KEGG pathway abundance
-#' daa_results <- pathway_daa(abundance, metadata, group = "Group")
-#' annotated_results <- pathway_annotation(pathway = "KO",
-#'                               daa_results_df = daa_results,
-#'                               ko_to_kegg = TRUE)
-#'
-#' # Example 3: Annotate EC pathways
-#' ec_results <- pathway_daa(abundance, metadata, group = "Group")
-#' annotated_ec <- pathway_annotation(pathway = "EC",
-#'                               daa_results_df = ec_results,
-#'                               ko_to_kegg = TRUE)
-#'
-#' # Example 4: Annotate KO pathways with human-specific information
-#' daa_results <- pathway_daa(abundance, metadata, group = "Group")
-#' human_results <- pathway_annotation(pathway = "KO",
-#'                               daa_results_df = daa_results,
-#'                               ko_to_kegg = TRUE,
-#'                               organism = "hsa")
-#' }
 #' @export
+#'
+#' @param file Optional PICRUSt2 abundance file (`.tsv`, `.txt` or `.csv`). File input takes precedence over `daa_results_df` and uses bundled references.
+#'
+#' @param pathway Functional reference namespace: `"KO"`, `"EC"` or `"MetaCyc"` for local annotation. Ignored by the online KEGG annotation branch.
+#'
+#' @param daa_results_df Differential-result data frame. Local annotation expects `feature` and `p_values`. Online annotation requires `feature` and `p_adjust`.
+#'
+#' @param ko_to_kegg Logical. If `TRUE` with result input, annotate retained KEGG identifiers through KEGGREST; this does not convert KO abundances to KEGG abundances.
+#'
+#' @param organism Optional KEGG organism code passed to the online query branch; ignored for local annotation.
+#'
+#' @param threshold Cutoff used by the online annotation branch: adjusted p-values strictly below this value. Ignored by local annotation.
+#'
+#' @return A data frame with the original columns plus `description` for local annotation. Online KEGG annotation filters results and adds `pathway_name`, `pathway_description`, `pathway_class` and `pathway_map`, where available.
+#'
+#' @details Online annotation requires KEGGREST and an available KEGG service. Unavailable records are reported; an error is raised if all queries fail. File annotation preserves the input abundance data and inserts a description column. For predictable row-wise feature annotation, use differential-result input with explicit feature IDs.
+#'
+#' @seealso [ko2kegg_abundance()], [pathway_daa()]
+#'
+#' @md
 pathway_annotation <- function(file = NULL,
                                pathway = NULL,
                                daa_results_df = NULL,
@@ -557,29 +523,21 @@ pathway_annotation <- function(file = NULL,
   }
 }
 
-#' Safely Extract Elements from a List
+#' Extract a list field as character text
 #'
-#' Safely extracts elements from a list, returning NA if the extraction fails
+#' Extract indexed values from a named list field, returning character missing values when the field is absent, empty or cannot be extracted.
 #'
-#' @param list A list object from which to extract elements
-#' @param field The name of the field to extract from the list
-#' @param index The index position to extract from the field. Default is 1
-#'
-#' @return The extracted element if successful, NA if extraction fails
-#'
-#' @examples
-#' # Create a sample list
-#' my_list <- list(
-#'   a = list(x = 1:3),
-#'   b = list(y = 4:6)
-#' )
-#'
-#' # Extract existing element
-#' safe_extract(my_list, "a", 1)
-#'
-#' # Extract non-existing element (returns NA)
-#' safe_extract(my_list, "c", 1)
 #' @export
+#'
+#' @param list Named list containing the requested field.
+#'
+#' @param field Name of the field to extract.
+#'
+#' @param index Index or indices within that field; default 1.
+#'
+#' @return A character vector from `as.character(list[[field]][index])`, or `NA_character_` if the field is missing, empty or extraction fails. Extraction errors are also printed as messages.
+#'
+#' @md
 safe_extract <- function(list, field, index = 1) {
   tryCatch({
     if (is.null(list) || !field %in% names(list) || is.null(list[[field]]) || length(list[[field]]) == 0) {

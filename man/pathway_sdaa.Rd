@@ -18,7 +18,8 @@ pathway_sdaa(
   reference = NULL,
   min_samples = 5,
   verbose = TRUE,
-  kegg_map = NULL
+  kegg_map = NULL,
+  maaslin2_transform = "AST"
 )
 }
 \arguments{
@@ -31,40 +32,37 @@ non-KEGG analyses with a compatible DAA method.}
 \item{physeq}{A \code{phyloseq} object with both \code{tax_table} (ASV rows)
 and \code{sample_data}.}
 
-\item{taxon_level}{Character scalar. Taxonomic rank used to aggregate ASVs
-when \code{direction = "taxa"} (e.g., \code{"Genus"}). Must exist in
-\code{phyloseq::tax_table(physeq)}.}
+\item{taxon_level}{Taxonomic rank in \code{tax_table(physeq)} used to aggregate ASVs in both orientations; default \code{"Genus"}.}
 
 \item{group}{Character scalar. Column name in \code{sample_data(physeq)} for
 the primary grouping variable. Coerced to factor; optionally releveled via
 \code{reference}.}
 
 \item{daa_method}{Character scalar. DAA backend passed to \code{pathway_daa()}
-(e.g., \code{"Maaslin2"}, \code{"edgeR"}, \code{"DESeq2"}, \code{"limma voom"},
-\code{"metagenomeSeq"}, \code{"Lefser"}).}
+(e.g., \code{'Maaslin2'}, \code{'edgeR'}, \code{'DESeq2'}, \code{'limma voom'},
+\code{'metagenomeSeq'}, \code{'Lefser'}).}
 
 \item{p.adjust.method}{Character scalar. Multiple-testing adjustment method
-forwarded to \code{pathway_daa()} (e.g., \code{"none"}, \code{"BH"}).}
+forwarded to \code{pathway_daa()} (e.g., \code{'none'}, \code{'BH'}).}
 
-\item{threshold}{Numeric. Significance cutoff used during result annotation
-(typically FDR/q-value threshold). Default: \code{0.05}.}
+\item{threshold}{Adjusted p-value cutoff passed to annotation. Function-oriented results retain \code{p_adjust < threshold}. Taxon-oriented KEGG annotation also filters by this cutoff; local KO/EC/MetaCyc annotation does not itself filter p-values.}
 
-\item{direction}{Character. One of \code{"taxa"} or \code{"function"}.
-If \code{"taxa"}, ASV contributions are aggregated to \code{taxon_level}
-and analyzed per-taxon table. If \code{"function"}, tables are built per
+\item{direction}{Character. One of \code{'taxa'} or \code{'function'}.
+If \code{'taxa'}, ASV contributions are aggregated to \code{taxon_level}
+and analyzed per-taxon table. If \code{'function'}, tables are built per
 function (KO/EC/MetaCyc) across taxa.}
 
 \item{pathway}{Character. Functional namespace of \code{function} IDs:
-\code{"KO"}, \code{"EC"}, \code{"MetaCyc"}, or \code{"KEGG"}.
-With \code{direction = "taxa"}, KO input is summarized by KEGG membership,
+\code{'KO'}, \code{'EC'}, \code{'MetaCyc'}, or \code{'KEGG'}.
+With \code{direction = 'taxa'}, KO input is summarized by KEGG membership,
 and KEGG input uses PICRUSt2 pathway contributions directly.}
 
 \item{confounders}{Optional. Confounding covariates to adjust for in DAA
-backends that support them. May be:
+with MaAsLin2 only. May be:
 \itemize{
-  \item a character vector of column names found in \code{sample_data(physeq)},
-  \item a numeric/character vector (single confounder),
-  \item or a \code{data.frame} of covariates (one column per variable).
+\item a character vector of column names found in \code{sample_data(physeq)},
+\item a numeric/character vector (single confounder),
+\item or a \code{data.frame} of covariates (one column per variable).
 }
 \emph{Note:} This argument is prepared here; use depends on the selected
 analysis backend.}
@@ -76,24 +74,29 @@ present, \code{group} is releveled accordingly.}
 samples (after metadata filtering) in a per-table subset to run DAA.
 Default: \code{5}.}
 
-\item{verbose}{Logical. If \code{TRUE}, print progress messages. Default \code{TRUE}.}
+\item{verbose}{Logical. Controls some progress messages. Per-table progress and backend messages may still be printed when FALSE.}
 
 \item{kegg_map}{Optional PICRUSt2 mapping TSV or named member list passed to
 \code{ko2kegg_abundance()} when summarizing KO input.}
+
+\item{maaslin2_transform}{Transformation used only with \code{daa_method = "Maaslin2"}: \code{"AST"} (default), \code{"LOG"}, \code{"LOGIT"} or \code{"NONE"}. MaAsLin2 uses TSS normalization before this transformation. Supplying this argument with another method raises an error.}
+}
+\value{
+A named list of differential-result data frames, keyed by taxon for \code{direction = "taxa"} or by function for \code{direction = "function"}. Annotation failures are reported and skipped. The \code{microfun} attribute records rank, direction, group, namespace, sample IDs, analysis method, reference, adjustment method, contribution column, KEGG mapping and MaAsLin2 transformation. An error is raised if no eligible or retained result remains.
 }
 \description{
 Given a PICRUSt2 stratified table (columns \code{sample}, \code{taxon},
 \code{function}, \code{taxon_function_abun}) and a \code{phyloseq}
 object, the function:
 \enumerate{
-  \item validates overlap of samples and taxa,
-  \item aggregates ASV-level contributions to a chosen taxonomic rank
-        (\code{taxon_level}) \emph{or} groups by each \code{function},
-  \item constructs wide matrices (rows = function IDs; cols = samples),
-  \item filters tables to ensure at least two groups and sufficient samples,
-  \item runs \code{pathway_daa()} on each table,
-  \item annotates significant results using \code{MicroFun::pathway_annotation()}
-        or \code{result_annotation()} depending on \code{direction/pathway}.
+\item validates overlap of samples and taxa,
+\item aggregates ASV-level contributions to a chosen taxonomic rank
+(\code{taxon_level}) \emph{or} groups by each \code{function},
+\item constructs wide matrices (rows = function IDs; cols = samples),
+\item filters tables to ensure at least two groups and sufficient samples,
+\item runs \code{pathway_daa()} on each table,
+\item annotates results using \code{MicroFun::pathway_annotation()}
+or \code{result_annotation()} depending on \code{direction/pathway}.
 }
 }
 \details{
@@ -102,37 +105,9 @@ stratified PICRUSt2 file and run differential abundance analysis (DAA),
 with optional annotation to KEGG/EC/MetaCyc names. Supports adjusting
 the modeling design with confounders via backends that accept them
 (e.g., MaAsLin2).
+
+With \code{direction = "taxa"} and \code{pathway = "KO"}, member KO contributions are summed into KEGG pathways before analysis; recorded \code{function_level} is therefore \code{"KEGG"}. Direct KEGG input requires \code{pathway = "KEGG"} and taxon-oriented analysis. These cases require raw \code{taxon_function_abun}. Other namespaces may use \code{norm_taxon_function_contrib} with a compatible method. Count-based methods reject fractional input in this workflow. Confounders are supported only with MaAsLin2. Every sample in \code{physeq} must occur in the contribution file; subset \code{physeq} explicitly if needed. Results from backends lacking usable p-values or effects may not support downstream annotation or plots.
 }
-\examples{
-\dontrun{
-stratified_path <- "pred_metagenome_contrib.tsv"
-# Minimal inputs
-out <- pathway_sdaa(
-  stratified_path = stratified_path,
-  physeq          = physeq_obj,
-  taxon_level     = "Genus",
-  group           = "Group",
-  daa_method      = "Maaslin2",
-  p.adjust.method = "BH",
-  threshold       = 0.05,
-  direction       = "taxa",
-  pathway         = "KO",
-  confounders     = c("Age","Sex"),
-  reference       = "Control",
-  min_samples     = 5
-)
-
-# Function-centric EC analysis:
-out_fun <- pathway_sdaa(
-  stratified_path = stratified_path,
-  physeq          = physeq_obj,
-  taxon_level     = "Genus",
-  group           = "Group",
-  daa_method      = "edgeR",
-  direction       = "function",
-  pathway         = "EC"
-)
-}
-
-
+\seealso{
+\code{\link[=pathway_daa]{pathway_daa()}}, \code{\link[=tax2fun_box]{tax2fun_box()}}, \code{\link[=fun2tax_box]{fun2tax_box()}}
 }

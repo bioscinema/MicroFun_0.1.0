@@ -652,15 +652,29 @@
 #' Standard Sankey supports HTML and RDS; tree Sankey supports HTML, SVG, PDF, PNG and RDS.
 #' Tree HTML and SVG use the same fixed layout as PDF/PNG. Hovering over a taxon,
 #' function or ribbon highlights its connections in HTML. No browser is required.
+#'
 #' @param x A widget returned by either Sankey function (any tree_mode).
+#'
 #' @param file Output path ending in .html, .svg, .pdf, .png or .rds.
+#'
 #' @param width,height Optional dimensions: pixels for PNG, points for PDF.
+#'
 #' @param pdf_size Maximum PDF width and height in inches.
+#'
 #' @param pdf_mode Fit one page or export vertical continuation tiles.
+#'
 #' @param selfcontained For standard HTML widgets, create one self-contained
 #'   HTML file (requires Pandoc); FALSE creates an HTML file with a dependency directory.
+#'
 #' @return Invisibly, the normalized output file path.
+#'
 #' @export
+#'
+#' @details Standard widgets support HTML and RDS only. Tree widgets additionally support SVG, PDF and PNG with fixed SVG geometry. Tree HTML retains hover highlighting without embedding the raw R object. PDF/PNG require rsvg, tiled PDF also requires qpdf, and self-contained standard HTML requires Pandoc. PDF width and height are in points and override `pdf_size`; PNG dimensions are pixels. RDS preserves tree and statistical records for `redraw_sankey()`.
+#'
+#' @seealso [tax2fun_sankey()], [fun2tax_sankey()], [redraw_sankey()]
+#'
+#' @md
 save_sankey <- function(x, file, width = NULL, height = NULL, pdf_size = c(11.7, 16.5), pdf_mode = c("fit",
   "tiles"), selfcontained = TRUE) {
   pdf_mode <- match.arg(pdf_mode)
@@ -742,11 +756,22 @@ save_sankey <- function(x, file, width = NULL, height = NULL, pdf_size = c(11.7,
 }
 
 #' Redraw a saved tree Sankey with the current visualization engine
+#'
 #' @param x A tree-enabled MicroFun widget or an RDS filename.
-#' @param tree_options Named appearance options. Titles/footnotes are off by default.
-#' @param width,height Optional logical canvas size.
+#'
 #' @return A newly rendered htmlwidget retaining the original statistical records.
+#'
 #' @export
+#'
+#' @param tree_options Named tree appearance settings accepted by the Sankey functions. Defaults clear title/subtitle, hide the footer and enable link aggregation, clade collapsing and mapping bundles. Explicit settings override these defaults.
+#'
+#' @param width,height Optional minimum drawing width and height in pixels.
+#'
+#' @details Only saved tree-enabled widgets are accepted. Original associations, tree and taxon ordering are reused; no differential model is fitted. Automatic or explicit node spacing is retained unless overridden.
+#'
+#' @seealso [save_sankey()]
+#'
+#' @md
 redraw_sankey <- function(x, tree_options = list(), width = NULL, height = NULL) {
   if (is.character(x) && length(x) == 1L)
     x <- readRDS(x)

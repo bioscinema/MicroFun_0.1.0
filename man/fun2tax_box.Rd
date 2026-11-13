@@ -2,7 +2,7 @@
 % Please edit documentation in R/fun2tax_box.R
 \name{fun2tax_box}
 \alias{fun2tax_box}
-\title{Plot function-to-taxon contributions as grouped boxplots}
+\title{Boxplots of taxon contributions within functions or function groups}
 \usage{
 fun2tax_box(
   stratified_path,
@@ -13,15 +13,15 @@ fun2tax_box(
   pathway = c("KO", "EC", "MetaCyc"),
   value_col = NULL,
   wrap_width = 36,
-  group_functions = TRUE
+  group_functions = TRUE,
+  top_n = Inf
 )
 }
 \arguments{
 \item{stratified_path}{Character string. Path to a stratified PICRUSt2 output file
-(typically `*_stratified.tsv`), containing columns for function, taxon, sample, and contribution values.}
+(typically \verb{*_stratified.tsv}), containing columns for function, taxon, sample, and contribution values.}
 
-\item{pathway_sdaa_result}{A named list of results from an SDAA (statistical differential abundance analysis)
-step, keyed by function IDs. Only names are used here.}
+\item{pathway_sdaa_result}{Named result list from \code{pathway_sdaa(direction = "function")}, keyed by function ID. List names select functions; rows within each result table do not restrict the plotted taxa.}
 
 \item{physeq}{A \code{\link[phyloseq]{phyloseq}} object containing sample metadata
 and taxonomy table. Sample IDs must match those in \code{stratified_path}.}
@@ -41,28 +41,19 @@ result or the PICRUSt2 abundance column when available.}
 \item{wrap_width}{Integer. Width (in characters) for line-wrapping taxon labels
 on the x-axis. Defaults to 36.}
 
-\item{group_functions}{Logical. Whether to group function IDs into higher-level
-reference categories (via reference maps included in the package). Defaults to \code{TRUE}.}
+\item{group_functions}{Logical. Group KO IDs by the bundled \code{PathwayL2} annotation, or EC/MetaCyc IDs by description. Unmatched functions are pooled into \code{Unmapped}. If \code{FALSE}, return a plot for each function ID.}
+
+\item{top_n}{Positive integer or \code{Inf} (default, retain all). Within each plot, rank features by the mean of their group mean contributions, giving equal weight to each group. Ties are ordered by feature ID. Missing group assignments are excluded when selecting a finite number of features.}
+}
+\value{
+A named list of ggplot objects, one per function or reference group with matching contributions. Empty plots are omitted.
 }
 \description{
-This function takes a stratified PICRUSt2 output table, a phyloseq object,
-and a list of pathway-level results, and produces ggplot2 boxplots of
-function contributions summarized by taxonomic level and experimental group.
+Aggregate stratified contributions for the function IDs in a function-oriented result list and compare their taxonomic contributors across sample groups.
 }
-\examples{
-\dontrun{
-# Example with KO pathway
-plots <- fun2tax_box(
-  stratified_path = "ko_metagenome_out_stratified.tsv",
-  pathway_sdaa_result = sdaa_result,
-  physeq = physeq_obj,
-  group = "Treatment",
-  taxon_level = NULL,
-  pathway = "KO"
-)
-# Display first plot
-print(plots[[1]])
+\details{
+ASVs are aggregated to \code{taxon_level}. Missing taxon/sample combinations are filled with zero. The y-axis is \code{log10(pmax(contribution, 0) + 1e-6)}. Input contribution units are retained before this transformation. This function neither reruns differential analysis nor filters taxa by adjusted p-value.
 }
-
-
+\seealso{
+\code{\link[=pathway_sdaa]{pathway_sdaa()}}, \code{\link[=tax2fun_box]{tax2fun_box()}}
 }

@@ -4,31 +4,22 @@
 #' The input file should be in .tsv, .txt, or .csv format.
 #'
 #' @param file A character string representing the file path of the input file containing KO abundance data in picrust2 export format. The input file should have KO identifiers in the first column and sample identifiers in the first row. The remaining cells should contain the abundance values for each KO-sample pair.
-#' @param data An optional data.frame containing KO abundance data in the same format as the input file. If provided, the function will use this data instead of reading from the file. By default, this parameter is set to NULL.
+#'
 #' @param kegg_map Optional PICRUSt2 mapping TSV (one pathway and its member KOs
 #'   per line, without a header), or a named list of member KOs by pathway.
 #'   Defaults to the package reference.
 #'
-#' @return
-#' A data frame with KEGG pathway abundance values. Rows represent KEGG pathways, identified by their KEGG pathway IDs. Columns represent samples, identified by their sample IDs from the input file. Each cell contains the abundance of a specific KEGG pathway in a given sample, calculated by summing the abundances of the corresponding KOs in the input file.
-#' @examples
-#' \dontrun{
-#' library(readr)
+#' @return A data frame with KEGG pathway abundance values. Rows represent KEGG pathways, identified by their KEGG pathway IDs. Columns represent samples, identified by their sample IDs from the input file. Each cell contains the abundance of a specific KEGG pathway in a given sample, calculated by summing the abundances of the corresponding KOs in the input file.
 #'
-#' # Example 1: Demonstration with a hypothetical input file
-#'
-#' # Prepare an input file path
-#' input_file <- "path/to/your/picrust2/results/pred_metagenome_unstrat.tsv"
-#'
-#' # Run ko2kegg_abundance function
-#' kegg_abundance <- ko2kegg_abundance(file = input_file)
-#'
-#' # Alternatively, read the data from a file and use the data argument
-#' file_path <- "path/to/your/picrust2/results/pred_metagenome_unstrat.tsv"
-#' ko_abundance <- read_delim(file_path, delim = "\t")
-#' kegg_abundance <- ko2kegg_abundance(data = ko_abundance)
-#' }
 #' @export
+#'
+#' @param data Optional data frame with KO identifiers in the first column and numeric sample abundances in subsequent columns; KO row names alone are insufficient. Takes precedence over `file` when both are supplied.
+#'
+#' @details KO identifiers are normalized and duplicate IDs are summed before mapping. Only pathways with matching member KOs are returned. A KO may belong to multiple pathways, so pathway totals overlap and do not form a partition of the original total abundance.
+#'
+#' @seealso [pathway_annotation()]
+#'
+#' @md
 ko2kegg_abundance <- function (file = NULL, data = NULL, kegg_map = NULL) {
   # Validate basic arguments.
   if (is.null(file) & is.null(data)) {

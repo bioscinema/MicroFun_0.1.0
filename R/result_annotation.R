@@ -1,18 +1,18 @@
-#' Annotate Significant Features from Differential Abundance Results from function direction
+#' Filter significant function-oriented differential results
 #'
-#' This function filters and returns statistically significant features from a differential 
-#' abundance analysis (DAA) result based on an adjusted p-value threshold.
+#' Internal helper that retains rows with non-missing adjusted p-values below a threshold and sorts them by adjusted p-value. It does not add functional annotations.
 #'
 #' @param daa_result A data frame containing the results of a differential abundance analysis. 
 #'   Must include at least the columns \code{feature} and \code{p_adjust}.
+#'
 #' @param threshold A numeric value specifying the adjusted p-value cutoff for significance. 
 #'   Defaults to \code{0.05}.
 #'
-#' @return A data frame of significant features with adjusted p-values below the given threshold, 
-#'   sorted by ascending p-value.
-#'
-#'
 #' @keywords internal
+#'
+#' @return A data frame with the input columns, restricted to `p_adjust < threshold` and sorted in ascending adjusted p-value order.
+#'
+#' @md
 result_annotation <- function(daa_result, threshold = 0.05) {
   # Check required columns
   required_cols <- c("feature", "p_adjust")

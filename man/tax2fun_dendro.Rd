@@ -17,67 +17,55 @@ tax2fun_dendro(
 )
 }
 \arguments{
-\item{pathway_sdaa_result}{A **named list** where each element corresponds to a
-taxon (e.g., Genus) and contains a `data.frame` of differential results with
-at least a `logFC` column and one label column among
-`pathway_name`, `feature`, or `function` (the function tries them in that order).}
+\item{pathway_sdaa_result}{A \strong{named list} where each element corresponds to a
+taxon (e.g., Genus) and contains a \code{data.frame} of differential results with
+at least a \code{logFC} column and one label column among
+\code{pathway_name}, \code{feature}, or \code{function} (the function tries them in that order).}
 
 \item{taxa_list}{Optional character vector of taxon names to include (must match
-names of `pathway_sdaa_result`). If `NULL`, all taxa in the list are used.}
+names of \code{pathway_sdaa_result}). If \code{NULL}, all taxa in the list are used.}
 
-\item{top_n_per_genus}{Integer. Number of functions to keep **per taxon** after
-ranking by `abs(logFC)`. Default `5`.}
+\item{top_n_per_genus}{Legacy argument giving the number of functions per taxon; default 5. Used as the default for \code{top_n_per_taxon}.}
 
 \item{wrap_width}{Integer. Maximum character width for wrapping function labels.
-Default `36`.}
+Default \code{36}.}
 
-\item{title}{Character plot title. Default `"Function dendrogram"`.}
+\item{title}{Character plot title. Default \code{"Function dendrogram"}.}
 
 \item{point_size_range}{Numeric length-2 vector specifying the range of point
-sizes mapped to \eqn{|logFC|}. Default `c(1.5, 5)`.}
+sizes mapped to \eqn{|logFC|}. Default \code{c(1.5, 5)}.}
 
-\item{label_size}{Numeric. Text size for leaf labels. Default `2`.}
+\item{label_size}{Numeric. Text size for leaf labels. Default \code{2}.}
 
 \item{taxon_level}{Rank inferred from recorded analysis settings; otherwise Genus.}
 
-\item{top_n_per_taxon}{Rank-independent alias for top_n_per_genus.}
+\item{top_n_per_taxon}{Rank-independent number of functions retained per taxon by descending absolute \code{logFC}. Overrides \code{top_n_per_genus} when supplied.}
 }
 \value{
-A named `list` with components:
-\item{plot}{A `ggraph`/`ggplot` object (the circular dendrogram).}
+A named \code{list} with components:
+\item{plot}{A \code{ggraph}/\code{ggplot} object (the circular dendrogram).}
 \item{used_taxa}{Character vector of taxa actually plotted.}
-\item{missing_taxa}{Character vector of requested taxa not found in `pathway_sdaa_result`.}
+\item{missing_taxa}{Character vector of requested taxa not found in \code{pathway_sdaa_result}.}
 }
 \description{
-Build a **circular dendrogram** that connects each selected taxon (e.g., Genus)
-to its **top-|logFC| functions** from a stratified pathway analysis result
-(the list returned by `pathway_sdaa()` or a similar routine). Leaf nodes are
+Build a \strong{circular dendrogram} that connects each selected taxon (e.g., Genus)
+to its \strong{top-|logFC| functions} from a stratified pathway analysis result
+(the list returned by \code{pathway_sdaa()} or a similar routine). Leaf nodes are
 function labels colored by taxon, with point size proportional to
-\eqn{|logFC|}. Ranking and selection use **absolute logFC only** (no p-value
+\eqn{|logFC|}. Ranking and selection use \strong{absolute logFC only} (no p-value
 filtering).
 }
 \details{
-The function constructs a simple hierarchy: a root node → each selected taxon →
-that taxon’s top functions. It then draws a circular dendrogram using **ggraph**
-with edges colored by the **parent taxon** and leaf points sized by
-\eqn{|logFC|}. Labels are wrapped to `wrap_width`.
-**Note:** selection is based solely on `abs(logFC)`; if you want to enforce
-significance, pre-filter `pathway_sdaa_result` before calling this function.
+Leaves are selected by absolute \code{logFC} without p-value filtering. Pre-filter the input for significance if required. \code{logFC} is the stored model effect and is not necessarily a log fold change. Labels use \code{pathway_name}, then \code{feature}, then \code{function}. Requested taxon names are matched exactly. The plot component is \code{NULL} when no usable rows remain.
 }
 \section{Expected columns per taxon table}{
 
 \describe{
-  \item{logFC}{Numeric signed log fold-change used for ranking and point size.}
-  \item{pathway_name / feature / function}{One of these will be used as the label (in this order).}
+\item{logFC}{Numeric signed model effect used for ranking and point size; not necessarily a log fold change.}
+\item{pathway_name / feature / function}{One of these will be used as the label (in this order).}
 }
 }
 
-\examples{
-\donttest{
-# Suppose `res_list` is a named list of per-genus differential tables
-# (each with columns like: pathway_name, feature, logFC).
-# p_out <- tax2fun_dendro(res_list, top_n_per_genus = 8)
-# p_out$plot
-}
-
+\seealso{
+\code{\link[=fun2tax_dendro]{fun2tax_dendro()}}
 }

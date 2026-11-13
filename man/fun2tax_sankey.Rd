@@ -37,10 +37,10 @@ fun2tax_sankey(
 \item{pathway_sdaa_result}{Named list. Names are function IDs (KO/EC/MetaCyc).
 Each element is a data frame with columns including:
 \itemize{
-  \item \code{feature}: target/taxon (e.g., genus) label,
-  \item \code{logFC}: signed effect estimate,
-  \item a q/p-adjust column (any of: \code{p_adjust}, \code{padj},
-        \code{qval}, \code{q_value}, \code{qvalue}, \code{p.adj}, \code{FDR}, \code{p_adj}).
+\item \code{feature}: target/taxon (e.g., genus) label,
+\item \code{logFC}: signed effect estimate,
+\item a q/p-adjust column (any of: \code{p_adjust}, \code{padj},
+\code{qval}, \code{q_value}, \code{qvalue}, \code{p.adj}, \code{FDR}, \code{p_adj}).
 }}
 
 \item{pathway}{Character. Functional namespace of the names in
@@ -53,24 +53,20 @@ Requires reference files in \pkg{MicroFun}'s \code{inst/extdata}.}
 \item{taxa_list}{Optional character vector. If provided, keep only edges whose
 \emph{source} (group label or function ID) matches one of these entries.}
 
-\item{node_color}{Named character vector of length 2 with colors for link
-groups: names must be \code{c('Up','Down')}. Default: orange for Up
-(\code{'#F5BB7C'}), blue for Down (\code{'#B4CBE0'}).}
+\item{node_color}{Named colours for \code{Up} and \code{Down} links. Positive effects are Up; zero or negative effects are Down. Node category colours are set by the palettes.}
 
 \item{node_neutral}{Optional single colour overriding both node palettes.
 NULL (default) uses the light taxa and dark function palettes.}
 
-\item{label_left_sources}{Logical. If \code{TRUE}, left-side node labels are
-right-aligned and wrapped via JavaScript for readability. Default \code{TRUE}.}
+\item{label_left_sources}{Logical. In standard mode, place left-node labels to the left and right-node labels to the right. This hook does not wrap labels and does not control tree-mode labels.}
 
-\item{margin}{Named list with pixel margins \code{top}, \code{right},
-\code{bottom}, \code{left}. Passed to \code{networkD3::sankeyNetwork()}.}
+\item{margin}{Pixel margins for standard mode. When omitted, the implementation uses top 10, right 140, bottom 10 and left 160, overriding the legacy formal default. Explicitly supplied margins are passed through.}
 
 \item{height, width}{Numeric. Output size in pixels for the widget canvas.}
 
-\item{taxon_palette}{Light taxon colours; optionally named by colour category.}
+\item{taxon_palette}{Taxon category colours, optionally named by category. Unnamed palettes are extended when more colours are required.}
 
-\item{function_palette}{Dark function colours; optionally named by category.}
+\item{function_palette}{Function category colours, optionally named by category. Unnamed palettes are extended when more colours are required.}
 
 \item{taxon_groups}{Optional named character vector mapping each taxon name
 to a taxonomy category such as Phylum. Without it, taxa are coloured by name.}
@@ -97,56 +93,42 @@ to a taxonomy category such as Phylum. Without it, taxa are coloured by name.}
 
 \item{missing_taxa}{'error' (default) or 'drop' for taxa without matched tree tips.}
 
-\item{tree_options}{Named list: title, subtitle, font_size, font_family, tree_width, node_width,
-node_gap, show_tip_labels, tree_colour, link_opacity. Also accepts aggregate_links, collapse_clades, bundle_mapping and show_footer.}
+\item{tree_options}{Named list of tree appearance options: \code{title}, \code{subtitle}, \code{font_size}, \code{font_family}, \code{tree_width}, \code{node_width}, \code{node_gap}, \code{show_tip_labels}, \code{tree_colour}, \code{link_opacity}, \code{aggregate_links}, \code{collapse_clades}, \code{bundle_mapping} and \code{show_footer}. Default \code{node_gap = NULL} chooses spacing from label lengths; a positive value sets explicit spacing.}
 
 \item{phylogeny_order}{Taxon ordering in phylogeny mode: 'median' (default)
 uses the median displayed ASV tip position; 'first' uses the first tip position.
 Median ties use the first tip position. Tree topology determines tip order.
 Used only in phylogeny mode.}
+
+\item{height, }{width Output dimensions in pixels when explicitly supplied. In standard mode, omitted dimensions are passed as \code{NULL} for automatic sizing despite the legacy numeric formals. In tree modes, these are minimum drawing dimensions.}
+}
+\value{
+An htmlwidget: a networkD3 widget for \code{tree_mode = "none"}, or a MicroFun tree Sankey widget for taxonomy/phylogeny mode. Tree widgets retain original edges, tree data and rendering settings for RDS export and redrawing.
 }
 \description{
-The input \code{pathway_sdaa_result} must be a **named list** where names are
+The input \code{pathway_sdaa_result} must be a \strong{named list} where names are
 function IDs (KO/EC/MetaCyc), and each element is a data frame containing at
 least \code{feature} (target/taxon), \code{logFC}, and one multiple-testing
 column (e.g., \code{p_adjust}, \code{padj}, \code{qval}, \code{FDR}). The
 function:
 \enumerate{
-  \item normalizes function IDs (e.g., strips \code{'ko:'}, \code{'ec:'}),
-  \item (optionally) maps IDs to higher-level groups using reference tables
-        shipped in \pkg{MicroFun} (\code{inst/extdata/*_reference.RData}),
-  \item assembles edges \emph{source to target} (group or function → taxon),
-  \item uses one unit of width per retained association,
-  \item colors links by direction (Up/Down), and
-  \item returns an interactive \pkg{networkD3} sankey widget.
+\item normalizes function IDs (e.g., strips \code{'ko:'}, \code{'ec:'}),
+\item (optionally) maps IDs to higher-level groups using reference tables
+shipped in \pkg{MicroFun} (\code{inst/extdata/*_reference.RData}),
+\item assembles edges \emph{source to target} (group or function -> taxon),
+\item uses one unit of width per retained association,
+\item colors links by direction (Up/Down), and
+\item returns an interactive \pkg{networkD3} sankey widget.
 }
 }
 \details{
 Build an interactive Sankey diagram linking functional features (KO, EC, or
-MetaCyc IDs) — optionally grouped to higher-level categories — to taxa or
+MetaCyc IDs) -- optionally grouped to higher-level categories -- to taxa or
 features reported in differential analysis results (e.g., from
 \code{pathway_sdaa()}).
+
+Each retained association contributes one unit of link width; these Sankey widths are association counts, not measured abundance. Links use the sign of \code{logFC}. No new significance cutoff is applied; filter result tables before plotting if needed. Tree modes integrate a taxonomic or phylogenetic side tree. Named palettes preserve category assignments. Use \code{save_sankey()} for supported exports.
 }
-\examples{
-\dontrun{
-# Minimal toy example
-sdaa_list <- list(
-  K00001 = data.frame(feature = c('GenusA','GenusB'),
-                      logFC = c( 1.1, -0.4),
-                      p_adjust = c(0.02, 0.3)),
-  K00002 = data.frame(feature = c('GenusB','GenusC'),
-                      logFC = c(-1.6,  0.5),
-                      p_adjust = c(0.01, 0.7))
-)
-
-# Function to taxon (no grouping)
-p1 <- fun2tax_sankey(sdaa_list, pathway = 'KO', group_functions = FALSE)
-p1
-
-# Group functions to higher-level categories (requires reference files)
-p2 <- fun2tax_sankey(sdaa_list, pathway = 'KO', group_functions = TRUE)
-p2
-}
-
-
+\seealso{
+\code{\link[=save_sankey]{save_sankey()}}, \code{\link[=redraw_sankey]{redraw_sankey()}}
 }

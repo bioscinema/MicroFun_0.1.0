@@ -2,7 +2,7 @@
 % Please edit documentation in R/pathway_annotation.R
 \name{pathway_annotation}
 \alias{pathway_annotation}
-\title{Pathway information annotation}
+\title{Annotate functional abundance files or differential results}
 \usage{
 pathway_annotation(
   file = NULL,
@@ -14,66 +14,27 @@ pathway_annotation(
 )
 }
 \arguments{
-\item{file}{A character string, the path to the PICRUSt2 output file.}
+\item{file}{Optional PICRUSt2 abundance file (\code{.tsv}, \code{.txt} or \code{.csv}). File input takes precedence over \code{daa_results_df} and uses bundled references.}
 
-\item{pathway}{A character string, the type of pathway to annotate. Options are "KO", "EC", or "MetaCyc".}
+\item{pathway}{Functional reference namespace: \code{"KO"}, \code{"EC"} or \code{"MetaCyc"} for local annotation. Ignored by the online KEGG annotation branch.}
 
-\item{daa_results_df}{A data frame, the output from `pathway_daa` function.}
+\item{daa_results_df}{Differential-result data frame. Local annotation expects \code{feature} and \code{p_values}. Online annotation requires \code{feature} and \code{p_adjust}.}
 
-\item{ko_to_kegg}{A logical, decide if convert KO abundance to KEGG pathway abundance. Default is FALSE. Set to TRUE when using the function for the second use case.}
+\item{ko_to_kegg}{Logical. If \code{TRUE} with result input, annotate retained KEGG identifiers through KEGGREST; this does not convert KO abundances to KEGG abundances.}
 
-\item{organism}{A character string specifying the KEGG organism code (e.g., 'hsa' for human, 'eco' for E. coli). Default is NULL, which retrieves generic KO information not specific to any organism. Only used when ko_to_kegg is TRUE.}
+\item{organism}{Optional KEGG organism code passed to the online query branch; ignored for local annotation.}
 
-\item{threshold}{numeric. Adjusted p-value (or score) cutoff used to retain, default is 0.05}
+\item{threshold}{Cutoff used by the online annotation branch: adjusted p-values strictly below this value. Ignored by local annotation.}
 }
 \value{
-A data frame with annotated pathway information.
-If using the function for the first use case, the output data frame will include the following columns:
-\itemize{
-  \item \code{id}: The pathway ID.
-  \item \code{description}: The description of the pathway.
-  \item \code{sample1, sample2, ...}: Abundance values for each sample.
-}
-
-If \code{ko_to_kegg} is set to TRUE, the output data frame will also include the following columns:
-\itemize{
-  \item \code{pathway_name}: The name of the KEGG pathway.
-  \item \code{pathway_description}: The description of the KEGG pathway.
-  \item \code{pathway_class}: The class of the KEGG pathway.
-  \item \code{pathway_map}: The KEGG pathway map ID.
-}
-
-When \code{ko_to_kegg} is TRUE, the function queries the KEGG database for pathway information. By default (organism = NULL), it retrieves generic KO information that is not specific to any organism. If you are interested in organism-specific pathway information, you can specify the KEGG organism code using the \code{organism} parameter.
+A data frame with the original columns plus \code{description} for local annotation. Online KEGG annotation filters results and adds \code{pathway_name}, \code{pathway_description}, \code{pathway_class} and \code{pathway_map}, where available.
 }
 \description{
-This function serves two main purposes:
-1. Annotating pathway information from PICRUSt2 output files.
-2. Annotating pathway information from the output of `pathway_daa` function, and converting KO abundance to KEGG pathway abundance when `ko_to_kegg` is set to TRUE.
+Add bundled KO, EC or MetaCyc descriptions, or retrieve KEGG pathway annotations for differential results. This function annotates identifiers; it does not aggregate an abundance matrix.
 }
-\examples{
-\dontrun{
-# Example 1: Annotate pathways from PICRUSt2 output file
-pathway_annotation(file = "path/to/picrust2_output.tsv",
-                              pathway = "KO")
-
-# Example 2: Annotate pathways from pathway_daa output
-# and converting KO abundance to KEGG pathway abundance
-daa_results <- pathway_daa(abundance, metadata, group = "Group")
-annotated_results <- pathway_annotation(pathway = "KO",
-                              daa_results_df = daa_results,
-                              ko_to_kegg = TRUE)
-
-# Example 3: Annotate EC pathways
-ec_results <- pathway_daa(abundance, metadata, group = "Group")
-annotated_ec <- pathway_annotation(pathway = "EC",
-                              daa_results_df = ec_results,
-                              ko_to_kegg = TRUE)
-
-# Example 4: Annotate KO pathways with human-specific information
-daa_results <- pathway_daa(abundance, metadata, group = "Group")
-human_results <- pathway_annotation(pathway = "KO",
-                              daa_results_df = daa_results,
-                              ko_to_kegg = TRUE,
-                              organism = "hsa")
+\details{
+Online annotation requires KEGGREST and an available KEGG service. Unavailable records are reported; an error is raised if all queries fail. File annotation preserves the input abundance data and inserts a description column. For predictable row-wise feature annotation, use differential-result input with explicit feature IDs.
 }
+\seealso{
+\code{\link[=ko2kegg_abundance]{ko2kegg_abundance()}}, \code{\link[=pathway_daa]{pathway_daa()}}
 }

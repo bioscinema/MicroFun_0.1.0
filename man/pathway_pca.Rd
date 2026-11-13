@@ -2,76 +2,29 @@
 % Please edit documentation in R/pathway_pca.R
 \name{pathway_pca}
 \alias{pathway_pca}
-\title{Perform Principal Component Analysis (PCA) on functional pathway abundance data}
+\title{PCA of functional abundance profiles with marginal densities}
 \usage{
 pathway_pca(abundance, metadata, group, colors = NULL)
 }
 \arguments{
-\item{abundance}{A numeric matrix or data frame containing pathway abundance data.
-Rows represent pathways, columns represent samples.
-Column names must match the sample names in metadata.
-Values must be numeric and cannot contain missing values (NA).}
+\item{abundance}{Numeric matrix or data frame with at least two features in rows and three samples in columns. Supply unique sample column names, finite values, no missing values and no constant feature rows.}
 
-\item{metadata}{A data frame containing sample information.
-Must include:
-\itemize{
-  \item A column named "sample_name" matching the column names in abundance
-  \item A column for grouping samples (specified by the 'group' parameter)
-}}
+\item{metadata}{Data frame containing a unique \code{sample_name} column and the grouping column. Its sample IDs must match the abundance columns exactly; row order may differ.}
 
 \item{group}{A character string specifying the column name in metadata that contains
 group information for samples (e.g., "treatment", "condition", "group").}
 
-\item{colors}{Optional. A character vector of colors for different groups.
-Length must match the number of unique groups.
-If NULL, default colors will be used.}
+\item{colors}{Optional character vector with one valid colour per observed group. Defaults to the built-in group colours.}
 }
 \value{
-A ggplot object showing:
-       \itemize{
-         \item Center: PCA scatter plot with confidence ellipses (95%)
-         \item Top: Density plot for PC1
-         \item Right: Density plot for PC2
-       }
+A ggplot object created by converting the composite PCA and marginal-density layout with \code{ggplotify::as.ggplot()}.
 }
 \description{
-This function performs PCA analysis on pathway abundance data and creates an informative visualization
-that includes a scatter plot of the first two principal components (PC1 vs PC2) with density plots
-for both PCs. The plot helps to visualize the clustering patterns and distribution of samples
-across different groups.
+Compute PCA on the transposed abundance matrix with centering and feature scaling. Plot the first two components, 95 percent group ellipses and marginal density plots.
 }
 \details{
-The function performs several validations on input data:
-\itemize{
-  \item Abundance matrix must have at least 2 pathways and 3 samples
-  \item All values in abundance matrix must be numeric
-  \item Sample names must match between abundance and metadata
-  \item Group column must exist in metadata
-  \item If custom colors are provided, they must be valid color names or codes
+No relative-abundance or logarithmic transformation is applied before PCA. Group ellipses and density estimates need enough observations and variation within each group; small or degenerate groups may produce plotting warnings.
 }
-}
-\examples{
-# Create example abundance data
-abundance_data <- matrix(rnorm(30), nrow = 3, ncol = 10)
-colnames(abundance_data) <- paste0("Sample", 1:10)
-rownames(abundance_data) <- c("PathwayA", "PathwayB", "PathwayC")
-
-# Create example metadata
-metadata <- data.frame(
-  sample_name = paste0("Sample", 1:10),
-  group = factor(rep(c("Control", "Treatment"), each = 5))
-)
-
-# Basic PCA plot with default colors
-pca_plot <- pathway_pca(abundance_data, metadata, "group")
-
-# PCA plot with custom colors
-pca_plot <- pathway_pca(
-  abundance_data,
-  metadata,
-  "group",
-  colors = c("blue", "red")  # One color per group
-)
-
-
+\seealso{
+\code{\link[=pathway_heatmap]{pathway_heatmap()}}
 }

@@ -1,62 +1,42 @@
-#' Create pathway heatmap
+utils::globalVariables(c("rowname","Sample","Value","quantile","facet_nested","strip_nested","elem_list_rect"))
+#' Heatmap of standardized functional abundances
 #'
-#' This function creates a heatmap of the predicted functional pathway abundance data.
-#' The function first makes the abundance data relative, then converts the abundance data
-#' to a long format and orders the samples based on the environment information.
-#' The heatmap is then created using the `ggplot2` library.
+#' Standardize each feature across samples to a z-score and draw a heatmap with samples ordered and faceted by group. The function does not first convert input values to relative abundance.
 #'
-#' @name pathway_heatmap
-#' @param abundance A matrix or data frame of pathway abundance data, where columns
-#'   correspond to samples and rows correspond to pathways. Must contain at least
-#'   two samples.
-#' @param metadata A data frame of metadata, where each row corresponds to a sample
-#'   and each column corresponds to a metadata variable.
 #' @param group A character string specifying the column name in the metadata data frame
 #'   that contains the group variable. Must contain at least two groups.
-#' @param colors A vector of colors used for the background of the facet labels in the
-#'   heatmap. If NULL or not provided, a default color set is used for the facet strips.
+#'
 #' @param font_size A numeric value specifying the font size for the heatmap.
+#'
 #' @param show_row_names A logical value indicating whether to show row names in the heatmap.
+#'
 #' @param show_legend A logical value indicating whether to show the legend in the heatmap.
+#'
 #' @param custom_theme A custom theme for the heatmap.
 #'
-#' @return A ggplot heatmap object representing the heatmap of the predicted functional
-#'   pathway abundance data.
 #' @export
 #'
 #' @import dplyr
+#'
 #' @import ggplot2
+#'
 #' @import tidyr
+#'
 #' @importFrom ggh4x facet_nested strip_nested elem_list_rect
 #'
-#' @examples
-#' \dontrun{
-#' library(MicroFun)
-#' library(ggh4x)
-#' library(dplyr)
-#' library(tidyr)
-#' library(tibble)
-#' library(magrittr)
+#' @param metadata Data frame containing the grouping column and exactly one sample-identifier column whose values include all abundance sample names. Row names alone are not used. Use one row per sample.
 #'
-#' # Create example functional pathway abundance data
-#' kegg_abundance_example <- matrix(rnorm(30), nrow = 3, ncol = 10)
-#' colnames(kegg_abundance_example) <- paste0("Sample", 1:10)
-#' rownames(kegg_abundance_example) <- c("PathwayA", "PathwayB", "PathwayC")
+#' @param abundance Numeric matrix or data frame with features in rows and samples in columns. At least one feature and two samples are required. Supply finite values and nonconstant feature rows so row-wise scaling is defined.
 #'
-#' # Create example metadata
-#' metadata_example <- data.frame(
-#'   sample_name = colnames(kegg_abundance_example),
-#'   group = factor(rep(c("Control", "Treatment"), each = 5))
-#' )
+#' @param colors Character vector of group facet-strip background colours. This does not change the blue-white-orange z-score colour scale.
 #'
-#' # Custom colors for facet strips
-#' custom_colors <- c("skyblue", "salmon")
+#' @return A ggplot heatmap. The ordered sample names and group assignments are also printed to the console.
 #'
-#' # Create a heatmap using custom colors for facet strips
-#' pathway_heatmap(kegg_abundance_example, metadata_example, "group", colors = custom_colors)
+#' @details Each row is centered and divided by its standard deviation across samples. Rows with zero variance produce undefined z-scores and should be removed before plotting. `custom_theme` is added after the built-in theme.
 #'
-#' }
-utils::globalVariables(c("rowname","Sample","Value","quantile","facet_nested","strip_nested","elem_list_rect"))
+#' @seealso [pathway_pca()]
+#'
+#' @md
 pathway_heatmap <- function(abundance,
                             metadata,
                             group,

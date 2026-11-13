@@ -2,7 +2,7 @@
 % Please edit documentation in R/tax2fun_logfc.R
 \name{tax2fun_logfc}
 \alias{tax2fun_logfc}
-\title{Plot signed logFC pathways for each taxon (list of plots)}
+\title{Effect-size bar plots for taxon-oriented results}
 \usage{
 tax2fun_logfc(
   pathway_sdaa_result,
@@ -12,29 +12,28 @@ tax2fun_logfc(
 )
 }
 \arguments{
-\item{pathway_sdaa_result}{A **named list** where each element is a
-`data.frame` of differential results for one taxon (or function), containing
-at least the columns `feature`, `logFC`, `p_adjust`, `group1`, `group2`,
-and optionally `pathway_name`.}
+\item{pathway_sdaa_result}{A \strong{named list} where each element is a
+\code{data.frame} of differential results for one taxon (or function), containing
+at least the columns \code{feature}, \code{logFC}, \code{p_adjust}, \code{group1}, \code{group2},
+and optionally \code{pathway_name}.}
 
-\item{top_n}{Integer. Maximum number of bars (features) to display per plot.
-The function keeps the strongest absolute effects, but always keeps
-features with `p_adjust <= padj_cutoff`. Default `15`.}
+\item{top_n}{Positive integer giving the maximum number of rows per plot, ranked by absolute effect. Significant rows do not bypass this final limit.}
 
-\item{padj_cutoff}{Numeric. Adjusted p-value cutoff for retaining significant
-features even if they are not among the top `top_n` by absolute effect.
-Default `0.05`.}
+\item{padj_cutoff}{Adjusted p-value cutoff used in the internal row-selection step. The final plot is still capped at \code{top_n} and is not restricted to significant rows.}
 
 \item{wrap_width}{Integer. Character width used to line-wrap labels (via
-`stringr::str_wrap`). Default `45`.}
+\code{stringr::str_wrap}). Default \code{45}.}
 }
 \value{
-A named `list` of `ggplot` objects, one per entry of
-  `pathway_sdaa_result`. Entries with missing or empty data are omitted.
+A named \code{list} of \code{ggplot} objects, one per entry of
+\code{pathway_sdaa_result}. A plot is returned for each named entry; after filtering, some plots may contain no bars.
 }
 \description{
-Given the list returned by `pathway_sdaa()` (one data frame per taxon/function
-group), make a bar plot of signed log fold-changes (logFC) for each element,
-highlighting the direction of change and labeling bars with wrapped pathway
-names. Returns a named list of `ggplot` objects.
+Create one bar plot per taxon, ranking functions by absolute \code{logFC}. Positive and negative effects use the Up and Down colours. Recorded effect types label the effect axis.
+}
+\details{
+The column \code{logFC} may contain a model coefficient rather than a log fold change; its meaning follows \code{effect_type}. Input must contain \code{feature}, \code{logFC}, \code{p_adjust}, \code{group1} and \code{group2}. Restrict input to one contrast before plotting. Missing p-values are treated as 1 and missing effects are omitted.
+}
+\seealso{
+\code{\link[=fun2tax_logfc]{fun2tax_logfc()}}, \code{\link[=pathway_sdaa]{pathway_sdaa()}}
 }

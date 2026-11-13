@@ -2,7 +2,7 @@
 % Please edit documentation in R/tax2fun_box.R
 \name{tax2fun_box}
 \alias{tax2fun_box}
-\title{Plot Functional Abundance Boxplots for Driving Taxa}
+\title{Boxplots of functional contributions within each taxon}
 \usage{
 tax2fun_box(
   stratified_path,
@@ -10,51 +10,36 @@ tax2fun_box(
   physeq,
   taxon_level = NULL,
   group,
-  kegg_map = NULL
+  kegg_map = NULL,
+  top_n = Inf
 )
 }
 \arguments{
-\item{stratified_path}{Path to the stratified output file from PICRUSt2 (typically `*_strat.tsv`).}
+\item{stratified_path}{Path to a PICRUSt2 TSV or TSV.GZ containing \code{sample}, \code{taxon}, \code{function} and a contribution column. Taxon identifiers must match taxonomy row names in \code{physeq}.}
 
-\item{pathway_sdaa_result}{A named list of data.frames containing differential results
-(with `feature` and optionally `pathway_name`) for each taxon.}
+\item{pathway_sdaa_result}{Named result list from \code{pathway_sdaa(direction = "taxa")}. Names identify taxa and each table must contain \code{feature}; optional \code{pathway_name} or \code{description} supplies display labels.}
 
-\item{physeq}{A `phyloseq` object containing the microbial abundance table, taxonomy, and sample metadata.}
+\item{physeq}{A \code{phyloseq} object containing the microbial abundance table, taxonomy, and sample metadata.}
 
 \item{taxon_level}{A string indicating the taxonomic level to aggregate functions by
-(e.g., `"Genus"`, `"Family"`). Inferred from recorded analysis settings; otherwise `"Genus"`.}
+(e.g., \code{"Genus"}, \code{"Family"}). Inferred from recorded analysis settings; otherwise \code{"Genus"}.}
 
 \item{group}{A string specifying the sample metadata column used for grouping in boxplots.}
 
 \item{kegg_map}{Optional PICRUSt2 mapping TSV or named member list. Defaults
 to the mapping recorded in the SDAA result or the package reference.}
+
+\item{top_n}{Positive integer or \code{Inf} (default, retain all). Within each plot, rank features by the mean of their group mean contributions, giving equal weight to each group. Ties are ordered by feature ID. Missing group assignments are excluded when selecting a finite number of features.}
 }
 \value{
-A named list of `ggplot2` boxplot objects, one for each taxon with matching functional results.
+A named list of \code{ggplot2} boxplot objects, one for each taxon with matching functional results.
 }
 \description{
-This function generates boxplots of stratified functional pathway abundances
-(from PICRUSt2 output) at a specified taxonomic level for each driving taxon,
-grouped by a metadata variable.
+Plot the functions present in each taxon-oriented differential result using the original stratified contributions. No statistical model or significance filter is applied by this plotting function.
 }
 \details{
-This function:
-\itemize{
-  \item Parses PICRUSt2 stratified output and maps ASVs to their taxonomic levels.
-  \item Aggregates function abundances at the taxon level.
-  \item Filters and matches functions found in the user-provided differential result per taxon.
-  \item Generates and returns a list of ggplot boxplots of function abundance by group.
+Contributions are summed over ASVs at the inferred taxonomic rank and plotted in their input units. Missing feature/sample combinations within observed samples are filled with zero. For KEGG results derived from KO input, member KOs are mapped and summed using \code{kegg_map}. KEGG requires \code{taxon_function_abun}; other namespaces can also use \code{norm_taxon_function_contrib}. Explicit ranks conflicting with recorded result settings are rejected.
 }
-}
-\examples{
-\dontrun{
-plot_list <- tax2fun_box(
-  stratified_path = "ko_metagenome_out/pred_metagenome_contrib.tsv",
-  pathway_sdaa_result = diff_results,
-  physeq = my_phyloseq,
-  taxon_level = NULL,
-  group = "disease_status"
-)
-plot_list$Bacteroides  # View boxplot for Bacteroides genus
-}
+\seealso{
+\code{\link[=pathway_sdaa]{pathway_sdaa()}}, \code{\link[=fun2tax_box]{fun2tax_box()}}
 }

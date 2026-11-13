@@ -1,9 +1,18 @@
-#' MicroFun categorical palettes
+#' Categorical colours for MicroFun plots
 #'
-#' @param side Either taxa (light muted nine colours) or function (dark muted
-#'   nine colours). Direction colours belong to the plotting functions.
-#' @return A character vector of nine hexadecimal colours.
+#' Return light taxon or darker functional category colours. Effect direction colours are set separately by plotting functions.
+#'
 #' @export
+#'
+#' @param side Palette to use: `"taxa"` or `"function"`.
+#'
+#' @param n Non-negative integer giving the number of colours to return; default 9. Requests beyond the base palette generate additional distinct colours within the corresponding lightness range.
+#'
+#' @return An unnamed character vector of `n` hexadecimal colour codes. `n = 0` returns an empty character vector.
+#'
+#' @details The first nine colours retain the original palette order. Extra colours are chosen by colour-space distance. An error is raised if the available colour range is exhausted.
+#'
+#' @md
 microfun_palette <- function(side = c("taxa", "function"), n = 9L) {
   side <- match.arg(side)
   base <- if (side == "taxa") {

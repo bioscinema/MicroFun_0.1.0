@@ -1,12 +1,11 @@
 #' Sankey diagram: functions (KO/EC/MetaCyc) to taxa/features
 #'
 #' Build an interactive Sankey diagram linking functional features (KO, EC, or
-#' MetaCyc IDs) — optionally grouped to higher-level categories — to taxa or
+#' MetaCyc IDs) -- optionally grouped to higher-level categories -- to taxa or
 #' features reported in differential analysis results (e.g., from
 #' \code{pathway_sdaa()}).
 #'
-#' @description
-#' The input \code{pathway_sdaa_result} must be a **named list** where names are
+#' @description The input \code{pathway_sdaa_result} must be a **named list** where names are
 #' function IDs (KO/EC/MetaCyc), and each element is a data frame containing at
 #' least \code{feature} (target/taxon), \code{logFC}, and one multiple-testing
 #' column (e.g., \code{p_adjust}, \code{padj}, \code{qval}, \code{FDR}). The
@@ -15,7 +14,7 @@
 #'   \item normalizes function IDs (e.g., strips \code{'ko:'}, \code{'ec:'}),
 #'   \item (optionally) maps IDs to higher-level groups using reference tables
 #'         shipped in \pkg{MicroFun} (\code{inst/extdata/*_reference.RData}),
-#'   \item assembles edges \emph{source to target} (group or function → taxon),
+#'   \item assembles edges \emph{source to target} (group or function -> taxon),
 #'   \item uses one unit of width per retained association,
 #'   \item colors links by direction (Up/Down), and
 #'   \item returns an interactive \pkg{networkD3} sankey widget.
@@ -29,73 +28,83 @@
 #'     \item a q/p-adjust column (any of: \code{p_adjust}, \code{padj},
 #'           \code{qval}, \code{q_value}, \code{qvalue}, \code{p.adj}, \code{FDR}, \code{p_adj}).
 #'   }
+#'
 #' @param pathway Character. Functional namespace of the names in
 #'   \code{pathway_sdaa_result}; one of \code{'KO'}, \code{'EC'}, \code{'MetaCyc'}.
+#'
 #' @param group_functions Logical. If \code{TRUE}, map function IDs to higher
 #'   groups before linking to taxa (KO to \code{PathwayL1}; EC/MetaCyc to \code{description}).
 #'   Requires reference files in \pkg{MicroFun}'s \code{inst/extdata}.
+#'
 #' @param taxa_list Optional character vector. If provided, keep only edges whose
 #'   \emph{source} (group label or function ID) matches one of these entries.
-#' @param node_color Named character vector of length 2 with colors for link
-#'   groups: names must be \code{c('Up','Down')}. Default: orange for Up
-#'   (\code{'#F5BB7C'}), blue for Down (\code{'#B4CBE0'}).
+#'
 #' @param node_neutral Optional single colour overriding both node palettes.
 #'   NULL (default) uses the light taxa and dark function palettes.
-#' @param taxon_palette Light taxon colours; optionally named by colour category.
-#' @param function_palette Dark function colours; optionally named by category.
+#'
 #' @param taxon_groups Optional named character vector mapping each taxon name
 #'   to a taxonomy category such as Phylum. Without it, taxa are coloured by name.
-#' @param label_left_sources Logical. If \code{TRUE}, left-side node labels are
-#'   right-aligned and wrapped via JavaScript for readability. Default \code{TRUE}.
-#' @param margin Named list with pixel margins \code{top}, \code{right},
-#'   \code{bottom}, \code{left}. Passed to \code{networkD3::sankeyNetwork()}.
+#'
 #' @param height,width Numeric. Output size in pixels for the widget canvas.
 #'
-#'
-#' @examples
-#' \dontrun{
-#' # Minimal toy example
-#' sdaa_list <- list(
-#'   K00001 = data.frame(feature = c('GenusA','GenusB'),
-#'                       logFC = c( 1.1, -0.4),
-#'                       p_adjust = c(0.02, 0.3)),
-#'   K00002 = data.frame(feature = c('GenusB','GenusC'),
-#'                       logFC = c(-1.6,  0.5),
-#'                       p_adjust = c(0.01, 0.7))
-#' )
-#'
-#' # Function to taxon (no grouping)
-#' p1 <- fun2tax_sankey(sdaa_list, pathway = 'KO', group_functions = FALSE)
-#' p1
-#'
-#' # Group functions to higher-level categories (requires reference files)
-#' p2 <- fun2tax_sankey(sdaa_list, pathway = 'KO', group_functions = TRUE)
-#' p2
-#' }
-#'
-#'
 #' @importFrom stats setNames
+#'
 #' @importFrom jsonlite toJSON
+#'
 #' @importFrom htmlwidgets JS onRender
+#'
 #' @importFrom networkD3 sankeyNetwork
+#'
 #' @param tree_mode Side tree: 'none' (networkD3), 'taxonomy', or 'phylogeny'.
+#'
 #' @param physeq Optional phyloseq object with original ASV taxonomy/tree.
+#'
 #' @param taxonomy Taxonomy data.frame/matrix; ASV row names or ASV/FeatureID column.
+#'
 #' @param phylo_tree A phylo object or named list of independent phylo trees.
+#'
 #' @param tree_file Newick file path(s). Each file must contain one tree.
+#'
 #' @param picrust2_dir PICRUSt2 output folder. Prefers reduced domain trees, then out.tre.
+#'
 #' @param taxon_level Rank inferred from recorded analysis settings; otherwise Genus. Use 'ASV' for ASV IDs.
+#'
 #' @param taxonomy_ranks Ordered ranks used for the taxonomic side tree; NULL uses available ancestors.
+#'
 #' @param tree_tip_level 'ASV' matches tree tips to taxonomy row IDs; 'taxon' requires already taxon-labelled tips.
+#'
 #' @param show_branch_length Use available phylogenetic branch lengths; otherwise topology only.
+#'
 #' @param phylogeny_order Taxon ordering in phylogeny mode: 'median' (default)
 #'   uses the median displayed ASV tip position; 'first' uses the first tip position.
 #'   Median ties use the first tip position. Tree topology determines tip order.
 #'   Used only in phylogeny mode.
+#'
 #' @param missing_taxa 'error' (default) or 'drop' for taxa without matched tree tips.
-#' @param tree_options Named list: title, subtitle, font_size, font_family, tree_width, node_width,
-#'   node_gap, show_tip_labels, tree_colour, link_opacity. Also accepts aggregate_links, collapse_clades, bundle_mapping and show_footer.
+#'
 #' @export
+#'
+#' @param node_color Named colours for `Up` and `Down` links. Positive effects are Up; zero or negative effects are Down. Node category colours are set by the palettes.
+#'
+#' @param tree_options Named list of tree appearance options: `title`, `subtitle`, `font_size`, `font_family`, `tree_width`, `node_width`, `node_gap`, `show_tip_labels`, `tree_colour`, `link_opacity`, `aggregate_links`, `collapse_clades`, `bundle_mapping` and `show_footer`. Default `node_gap = NULL` chooses spacing from label lengths; a positive value sets explicit spacing.
+#'
+#' @param label_left_sources Logical. In standard mode, place left-node labels to the left and right-node labels to the right. This hook does not wrap labels and does not control tree-mode labels.
+#'
+#' @param taxon_palette Taxon category colours, optionally named by category. Unnamed palettes are extended when more colours are required.
+#'
+#' @param function_palette Function category colours, optionally named by category. Unnamed palettes are extended when more colours are required.
+#'
+#' @param height, width Output dimensions in pixels when explicitly supplied. In standard mode, omitted dimensions are passed as `NULL` for automatic sizing despite the legacy numeric formals. In tree modes, these are minimum drawing dimensions.
+#'
+#' @param margin Pixel margins for standard mode. When omitted, the implementation uses top 10, right 140, bottom 10 and left 160, overriding the legacy formal default. Explicitly supplied margins are passed through.
+#'
+#' @return An htmlwidget: a networkD3 widget for `tree_mode = "none"`, or a MicroFun tree Sankey widget for taxonomy/phylogeny mode. Tree widgets retain original edges, tree data and rendering settings for RDS export and redrawing.
+#'
+#' @details Each retained association contributes one unit of link width; these Sankey widths are association counts, not measured abundance. Links use the sign of `logFC`. No new significance cutoff is applied; filter result tables before plotting if needed. Tree modes integrate a taxonomic or phylogenetic side tree. Named palettes preserve category assignments. Use `save_sankey()` for supported exports.
+#'
+#' @seealso [save_sankey()], [redraw_sankey()]
+#'
+#' @md
 fun2tax_sankey <- function(pathway_sdaa_result, pathway = c("KO", "EC", "MetaCyc"), group_functions = TRUE,
   taxa_list = NULL, node_color = c(Up = "#F5BB7C", Down = "#B4CBE0"), node_neutral = NULL, label_left_sources = TRUE,
   margin = list(top = 10, right = 200, bottom = 10, left = 180), height = 1200, width = 1000, taxon_palette = microfun_palette("taxa"),

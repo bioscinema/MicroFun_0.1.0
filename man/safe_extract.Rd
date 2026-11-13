@@ -2,33 +2,20 @@
 % Please edit documentation in R/pathway_annotation.R
 \name{safe_extract}
 \alias{safe_extract}
-\title{Safely Extract Elements from a List}
+\title{Extract a list field as character text}
 \usage{
 safe_extract(list, field, index = 1)
 }
 \arguments{
-\item{list}{A list object from which to extract elements}
+\item{list}{Named list containing the requested field.}
 
-\item{field}{The name of the field to extract from the list}
+\item{field}{Name of the field to extract.}
 
-\item{index}{The index position to extract from the field. Default is 1}
+\item{index}{Index or indices within that field; default 1.}
 }
 \value{
-The extracted element if successful, NA if extraction fails
+A character vector from \code{as.character(list[[field]][index])}, or \code{NA_character_} if the field is missing, empty or extraction fails. Extraction errors are also printed as messages.
 }
 \description{
-Safely extracts elements from a list, returning NA if the extraction fails
-}
-\examples{
-# Create a sample list
-my_list <- list(
-  a = list(x = 1:3),
-  b = list(y = 4:6)
-)
-
-# Extract existing element
-safe_extract(my_list, "a", 1)
-
-# Extract non-existing element (returns NA)
-safe_extract(my_list, "c", 1)
+Extract indexed values from a named list field, returning character missing values when the field is absent, empty or cannot be extracted.
 }

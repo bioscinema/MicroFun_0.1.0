@@ -4,33 +4,77 @@
 #' Width represents contribution, colour represents effect direction, and the
 #' outer bars represent absolute model effect (not necessarily log fold change).
 #' The returned object is redrawn by print() or plot(); it is not a ggplot.
+#'
 #' @param pathway_sdaa_result Named list returned by pathway_sdaa().
+#'
 #' @param stratified_path PICRUSt2 contribution TSV or TSV.GZ file.
+#'
 #' @param physeq phyloseq object containing taxonomy and sample metadata.
+#'
 #' @param group Metadata column used in the differential analysis.
+#'
 #' @param taxon_level Taxonomy rank; inferred from recorded settings, otherwise Genus.
+#'
 #' @param direction Result orientation: taxa or function. Inferred if recorded.
+#'
 #' @param function_level auto, KEGG, KO, EC or MetaCyc. KEGG uses PICRUSt2
 #'   pathway contributions directly or sums raw contributions of member KOs.
+#'
 #' @param contrast Two group labels, c(reference, target). Positive effects
 #'   indicate target relative to reference; must match the result contrast.
+#'
 #' @param taxa_list Optional taxon names, matched case-insensitively, exactly.
+#'
 #' @param functions Optional functional IDs to retain.
+#'
 #' @param padj_cutoff Retain finite p_adjust <= cutoff. Default 0.05.
+#'
 #' @param min_abs_effect Minimum absolute model effect.
+#'
 #' @param max_taxa_per_function Maximum links per function, ranked by width.
+#'
 #' @param max_functions_per_taxon Maximum links per taxon, ranked by width.
+#'
 #' @param contribution balanced_mean (equal weight to two group means) or mean
 #'   (mean over all selected samples). Uses original contribution units.
+#'
 #' @param function_table Optional unique function_id/function_group table, with an optional function_name column. Otherwise
 #'   missing and inconsistent annotations are reconciled; genuine conflicts are
 #'   labelled Ambiguous annotation and retained in observed_groups.
+#'
 #' @param output_pdf,output_png,output_html Optional export paths. No file is written by default.
+#'
 #' @param draw Draw on the current device when no export paths are supplied.
-#' @param ... Graphical arguments to the internal renderer; see Details in help.
-#' @return A microfun_chord object with links (after filtering), all_links (before
-#'   top-N), tax_table, function_table, settings and diagnostics.
+#'
 #' @export
+#'
+#' @param ... Graphical arguments to the chord renderer. See Details for encodings and exports. Available controls include `start_degree`, `side_gap`, `sector_gap`, `link_alpha`, `bar_alpha`, `effect_scale`, `effect_cap`, `outer_bar_track_height`, `label_track_height`, `taxon_label_cex`, `function_label_cex`, `show_legend`, `show_title`, `title_text`, `direction_cols`, `phylum_base_cols`, `function_group_palette`, `taxonomy_tint_step`, `show_category_legend`, `legend_cex`, `show_outer_border`, `outer_border_col`, `outer_border_lwd`, `narrow_labels`, `label_codes`, `label_fit`, `label_mapping_file`, `legend_min_cex`, `legend_position`, `taxonomy_label_cex`, `narrow_sector_degrees` and `prefer_full_taxa`.
+#'
+#' @return Invisibly, a `microfun_chord` list with `links`, `all_links` (retained edges before top-N filtering), `tax_table`, `function_table`, `settings` and `diagnostics`. Printing or plotting redraws it.
+#'
+#' @details
+#' Signed colours default to Up = "#F5BB7C", Down = "#B4CBE0"; ribbons use link_alpha = 0.32. Functional labels use `name[ID]`, resolved from an explicit function_name, result annotations, then bundled references. Unknown identifiers remain visible. Terminal prefixes are omitted.
+#'
+#' Input columns are sample, taxon, function and taxon_function_abun.
+#' Missing edge/sample records within observed samples count as zero; a sample entirely absent from the contribution file causes an error.
+#' Widths use the contribution column recorded by SDAA or taxon_function_abun when available.
+#' Non-KEGG inputs can also use norm_taxon_function_contrib when no abundance column is present.
+#' KEGG requires taxon_function_abun. KO input uses the sum of raw contributions of the mapped pathway members.
+#' KEGG pathways overlap, so widths summed across pathways do not form a partition of total microbial function.
+#' Maaslin2 AST coefficients are labelled as such and are not log fold changes.
+#' Bars use absolute effect times effect_scale, capped at effect_cap. Their scale is stated in the legend.
+#' Only ranks above the selected taxon_level are drawn as taxonomy rings. Duplicated taxon names with conflicting ancestral assignments cause an error.
+#' A function maps to one displayed group. Hierarchical annotations use the text before the first semicolon. Available non-missing annotations are reconciled across taxa before Top-N filtering; known KEGG category case and whitespace are normalised. Genuine conflicts produce a warning and the display group Ambiguous annotation. The returned function_table records observed_groups and annotation_status for automatic mappings. All-missing annotations use Unclassified function, with KO reference fallback where available. Supply function_table to override this display mapping.
+#' The default taxon palette is light muted nine-colour and the function palette is dark muted nine-colour.
+#' Ancestor tracks inherit the root category colour without extra whitening by default.
+#' Named palettes fix category assignments across plots; unnamed palettes are extended with additional distinct colours when needed.
+#' Category legends use separate pages by default, or a right panel with legend_position="right": Taxa first, then Function. Taxa colours refer to the highest available ancestor rank, or terminal taxa when ancestry is absent. Swatches match the actual displayed category colours. Direction and encoding legends follow below. Legend text fits the selected layout. Set show_legend=FALSE to hide all legends; show_category_legend can override category visibility independently. A continuous border traces the outer edge of the effect-bar track; its colour and width are configurable. These settings also apply when redrawing saved chord objects.
+#' No statistics are rerun by the plotting function. A backend without a usable effect estimate cannot be plotted.
+#' This is a base/circlize plot, not a ggplot; use save_chord(), output_pdf/output_png/output_html or a graphics device.
+#'
+#' @seealso [fun2tax_chord()], [save_chord()]
+#'
+#' @md
 tax2fun_chord <- function(pathway_sdaa_result, stratified_path, physeq, group, taxon_level = NULL, direction = NULL,
   function_level = c("auto", "KEGG", "KO", "EC", "MetaCyc"), contrast = NULL, taxa_list = NULL, functions = NULL,
   padj_cutoff = 0.05, min_abs_effect = 0, max_taxa_per_function = Inf, max_functions_per_taxon = Inf,
@@ -790,19 +834,31 @@ plot.microfun_chord <- function(x, ...) print(x, ...)
 #' Additional formats may be requested together with formats; all formats share
 #' the same output basename. Rendering logic and the companion legend/mapping
 #' outputs are unchanged.
+#'
 #' @param x A microfun_chord object.
+#'
 #' @param file Output path. Defaults to microfun_chord.html. When formats is
 #'   supplied, the file basename is used for every requested format.
+#'
 #' @param width,height Figure dimensions in inches.
+#'
 #' @param formats Optional additional extensions: html, pdf, png, svg, rds.
 #'   For example, formats = c("pdf", "png") saves HTML plus PDF and PNG
 #'   when file is omitted. If file is explicitly set, its extension is
 #'   always included.
+#'
 #' @param ... Graphical arguments forwarded to the original chord renderer.
+#'
 #' @return Invisibly, one normalized path for a single file or a named
 #'   character vector of output paths for multiple formats.
-#' @seealso tax2fun_chord
+#'
 #' @export
+#'
+#' @details HTML includes zoom controls and a searchable sector legend. Static PDF legends may continue on separate pages. PNG and SVG write a companion legend PDF when needed. Rendered exports write a label-mapping CSV; RDS stores the object without rendering. Plot dimensions are in inches. Use `formats` to request additional formats sharing the file basename.
+#'
+#' @seealso [tax2fun_chord()], [fun2tax_chord()]
+#'
+#' @md
 save_chord <- function(x, file = "microfun_chord.html", width = 18, height = 16,
                        formats = NULL, ...) {
   if (!inherits(x, "microfun_chord"))
@@ -939,13 +995,24 @@ save_chord <- function(x, file = "microfun_chord.html", width = 18, height = 16,
 #'
 #' Uses the same contribution weighting, filtering, taxonomy bands, labels and
 #' exports as tax2fun_chord. Requires results from direction = 'function'.
+#'
 #' @param pathway_sdaa_result Named list keyed by function ID.
+#'
 #' @param stratified_path PICRUSt2 contribution TSV or TSV.GZ.
+#'
 #' @param physeq A phyloseq object used for the differential analysis.
+#'
 #' @param group Metadata grouping column.
-#' @param ... Arguments passed to tax2fun_chord, except direction.
-#' @return A microfun_chord object.
+#'
 #' @export
+#'
+#' @param ... Arguments passed to `tax2fun_chord()`, except `direction`, which is fixed to `"function"`.
+#'
+#' @return Invisibly, a `microfun_chord` object with contribution-weighted links, annotation tables, settings and diagnostics.
+#'
+#' @seealso [tax2fun_chord()], [save_chord()]
+#'
+#' @md
 fun2tax_chord <- function(pathway_sdaa_result, stratified_path, physeq, group, ...) {
   .microfun_result_direction(pathway_sdaa_result, "function")
   tax2fun_chord(pathway_sdaa_result, stratified_path, physeq, group,

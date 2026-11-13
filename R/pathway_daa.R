@@ -4,23 +4,12 @@ NULL
 
 #' Differential Abundance Analysis for Predicted Functional Pathways
 #'
-#' @description
-#' Performs differential abundance analysis on predicted functional pathway data using various statistical methods.
+#' @description Performs differential abundance analysis on predicted functional pathway data using various statistical methods.
 #' This function supports multiple methods for analyzing differences in pathway abundance between groups,
 #' including popular approaches like ALDEx2, DESeq2, edgeR, and others.
 #'
-#' @param abundance A data frame or matrix containing predicted functional pathway abundance,
-#'        with pathways/features as rows and samples as columns.
-#'        The column names should match the sample names in metadata.
-#'        Values should be counts or abundance measurements.
-#'
-#' @param metadata A data frame or tibble containing sample information.
-#'        Must include a 'sample' column with sample identifiers matching the column names in abundance data.
-#'
 #' @param group Character string specifying the column name in metadata that contains group information
 #'        for differential abundance analysis.
-#'
-#' @param confounder Confounders covariates you want to adjust when doing analysis.
 #'
 #' @param daa_method Character string specifying the method for differential abundance analysis.
 #'        Available choices are:
@@ -50,59 +39,7 @@ NULL
 #'          \item \code{"none"}: No adjustment
 #'        }
 #'
-#' @param reference Character string specifying the reference level for the group comparison.
-#'        If NULL (default), the first level is used as reference.
-#'
-#' @param ... Additional arguments passed to the specific DAA method
-#'
-#' @return A data frame containing the differential abundance analysis results. The structure of the results
-#' depends on the chosen DAA method. For methods that support multi-group comparisons (like LinDA),
-#' when there are more than two groups, the results will contain separate rows for each feature in each
-#' pairwise comparison between the reference group and each non-reference group. The data frame includes
-#' the following columns:
-#' \itemize{
-#'   \item \code{feature}: Feature/pathway identifier
-#'   \item \code{method}: The DAA method used
-#'   \item \code{group1}: Reference group
-#'   \item \code{group2}: Comparison group
-#'   \item \code{p_values}: P-values for the comparison
-#'   \item \code{p_adjust}: Adjusted p-values
-#'   \item \code{adj_method}: Method used for p-value adjustment
-#' }
-#'
-#' Some methods may provide additional columns, such as \code{log2FoldChange} for effect size information.
-#'
-#' @examples
-#' \donttest{
-#' # Create example data with more samples
-#' abundance <- data.frame(
-#'   sample1 = c(10, 20, 30),
-#'   sample2 = c(20, 30, 40),
-#'   sample3 = c(30, 40, 50),
-#'   sample4 = c(40, 50, 60),
-#'   sample5 = c(50, 60, 70),
-#'   row.names = c("pathway1", "pathway2", "pathway3")
-#' )
-#'
-#' metadata <- data.frame(
-#'   sample = c("sample1", "sample2", "sample3", "sample4", "sample5"),
-#'   group = c("control", "control", "treatment", "treatment", "treatment")
-#' )
-#'
-#' # Run differential abundance analysis using ALDEx2
-#' results <- pathway_daa(abundance, metadata, "group")
-#'
-#' # Using a different method (limma voom instead of DESeq2 for this small example)
-#' limma_results <- pathway_daa(abundance, metadata, "group",
-#'                             daa_method = "limma voom")
-#'
-#' # Analyze specific samples only
-#' subset_results <- pathway_daa(abundance, metadata, "group",
-#'                              select = c("sample1", "sample2", "sample3", "sample4"))
-#' }
-#'
-#' @references
-#' \itemize{
+#' @references \itemize{
 #'   \item ALDEx2: Fernandes et al. (2014) Unifying the analysis of high-throughput sequencing datasets:
 #'         characterizing RNA-seq, 16S rRNA gene sequencing and selective growth experiments by
 #'         compositional data analysis. Microbiome.
@@ -119,6 +56,26 @@ NULL
 #' }
 #'
 #' @export
+#'
+#' @param abundance Numeric matrix or data frame with feature IDs as row names and unique sample IDs as column names. At least four selected samples and two observed groups are required. Choose input units appropriate for the selected backend; several backends round inputs to counts.
+#'
+#' @param metadata Data frame or tibble with a unique sample-identifier column matching the full set of abundance column names before sample selection. A matching `sample` column is preferred; otherwise other columns are searched. Row names alone are not used. Metadata is reordered to match the selected abundance columns.
+#'
+#' @param confounder Optional character vector of metadata covariate names. Only the MaAsLin2 backend uses this argument in the current implementation.
+#'
+#' @param reference Optional reference group. Used by MaAsLin2 and limma-voom; other backends use their own factor-level handling. For LinDA, supply an explicit reference matching the first fitted factor level; this wrapper does not relevel its model.
+#'
+#' @param ... Reserved for compatibility; currently not forwarded to backend functions.
+#'
+#' @param maaslin2_transform Transformation used only with `daa_method = "Maaslin2"`: `"AST"` (default), `"LOG"`, `"LOGIT"` or `"NONE"`. MaAsLin2 uses TSS normalization before this transformation. Supplying this argument with another method raises an error.
+#'
+#' @return A data frame whose columns depend on the backend. P-value backends return `feature`, `method`, group labels, `p_values`, `p_adjust` and `adj_method`. MaAsLin2 additionally returns `logFC` (the fitted coefficient) and `effect_type`; LinDA uses `log2FoldChange`. Lefser returns `effect_scores` without p-values or adjusted p-values. Some backends can return `NULL` when no result is produced.
+#'
+#' @details Backend names are case-sensitive: `ALDEx2`, `DESeq2`, `edgeR`, `limma voom`, `metagenomeSeq`, `LinDA`, `Maaslin2` and `Lefser`. Adjustment via `p.adjust()` is applied to all returned p-values together, including multiple contrasts or test types. MaAsLin2 coefficients are transformation-specific model effects, not automatically log fold changes. Other backends do not all return an effect estimate suitable for stratified plots. Multi-group contrast behavior depends on the backend; DESeq2 currently reports the second versus first factor level.
+#'
+#' @seealso [pathway_sdaa()], [pathway_annotation()]
+#'
+#' @md
 pathway_daa <- function(abundance, metadata, group, confounder = NULL, daa_method = "ALDEx2",
                         select = NULL, p.adjust = "BH", reference = NULL, ..., maaslin2_transform = "AST") {
   if (daa_method == "Maaslin2") {

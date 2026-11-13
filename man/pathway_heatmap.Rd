@@ -2,20 +2,28 @@
 % Please edit documentation in R/pathway_heatmap.R
 \name{pathway_heatmap}
 \alias{pathway_heatmap}
-\title{Create pathway heatmap}
+\title{Heatmap of standardized functional abundances}
+\usage{
+pathway_heatmap(
+  abundance,
+  metadata,
+  group,
+  colors = NULL,
+  font_size = 12,
+  show_row_names = TRUE,
+  show_legend = TRUE,
+  custom_theme = NULL
+)
+}
 \arguments{
-\item{abundance}{A matrix or data frame of pathway abundance data, where columns
-correspond to samples and rows correspond to pathways. Must contain at least
-two samples.}
+\item{abundance}{Numeric matrix or data frame with features in rows and samples in columns. At least one feature and two samples are required. Supply finite values and nonconstant feature rows so row-wise scaling is defined.}
 
-\item{metadata}{A data frame of metadata, where each row corresponds to a sample
-and each column corresponds to a metadata variable.}
+\item{metadata}{Data frame containing the grouping column and exactly one sample-identifier column whose values include all abundance sample names. Row names alone are not used. Use one row per sample.}
 
 \item{group}{A character string specifying the column name in the metadata data frame
 that contains the group variable. Must contain at least two groups.}
 
-\item{colors}{A vector of colors used for the background of the facet labels in the
-heatmap. If NULL or not provided, a default color set is used for the facet strips.}
+\item{colors}{Character vector of group facet-strip background colours. This does not change the blue-white-orange z-score colour scale.}
 
 \item{font_size}{A numeric value specifying the font size for the heatmap.}
 
@@ -26,41 +34,14 @@ heatmap. If NULL or not provided, a default color set is used for the facet stri
 \item{custom_theme}{A custom theme for the heatmap.}
 }
 \value{
-A ggplot heatmap object representing the heatmap of the predicted functional
-  pathway abundance data.
+A ggplot heatmap. The ordered sample names and group assignments are also printed to the console.
 }
 \description{
-This function creates a heatmap of the predicted functional pathway abundance data.
-The function first makes the abundance data relative, then converts the abundance data
-to a long format and orders the samples based on the environment information.
-The heatmap is then created using the `ggplot2` library.
+Standardize each feature across samples to a z-score and draw a heatmap with samples ordered and faceted by group. The function does not first convert input values to relative abundance.
 }
-\examples{
-\dontrun{
-library(MicroFun)
-library(ggh4x)
-library(dplyr)
-library(tidyr)
-library(tibble)
-library(magrittr)
-
-# Create example functional pathway abundance data
-kegg_abundance_example <- matrix(rnorm(30), nrow = 3, ncol = 10)
-colnames(kegg_abundance_example) <- paste0("Sample", 1:10)
-rownames(kegg_abundance_example) <- c("PathwayA", "PathwayB", "PathwayC")
-
-# Create example metadata
-metadata_example <- data.frame(
-  sample_name = colnames(kegg_abundance_example),
-  group = factor(rep(c("Control", "Treatment"), each = 5))
-)
-
-# Custom colors for facet strips
-custom_colors <- c("skyblue", "salmon")
-
-# Create a heatmap using custom colors for facet strips
-pathway_heatmap(kegg_abundance_example, metadata_example, "group", colors = custom_colors)
-
-
+\details{
+Each row is centered and divided by its standard deviation across samples. Rows with zero variance produce undefined z-scores and should be removed before plotting. \code{custom_theme} is added after the built-in theme.
 }
+\seealso{
+\code{\link[=pathway_pca]{pathway_pca()}}
 }

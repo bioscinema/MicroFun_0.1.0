@@ -1,31 +1,29 @@
-#' Plot signed logFC pathways for each taxon (list of plots)
+#' Effect-size bar plots for taxon-oriented results
 #'
-#' @description
-#' Given the list returned by `pathway_sdaa()` (one data frame per taxon/function
-#' group), make a bar plot of signed log fold-changes (logFC) for each element,
-#' highlighting the direction of change and labeling bars with wrapped pathway
-#' names. Returns a named list of `ggplot` objects.
+#' Create one bar plot per taxon, ranking functions by absolute `logFC`. Positive and negative effects use the Up and Down colours. Recorded effect types label the effect axis.
 #'
 #' @param pathway_sdaa_result A **named list** where each element is a
 #'   `data.frame` of differential results for one taxon (or function), containing
 #'   at least the columns `feature`, `logFC`, `p_adjust`, `group1`, `group2`,
 #'   and optionally `pathway_name`.
-#' @param top_n Integer. Maximum number of bars (features) to display per plot.
-#'   The function keeps the strongest absolute effects, but always keeps
-#'   features with `p_adjust <= padj_cutoff`. Default `15`.
-#' @param padj_cutoff Numeric. Adjusted p-value cutoff for retaining significant
-#'   features even if they are not among the top `top_n` by absolute effect.
-#'   Default `0.05`.
+#'
 #' @param wrap_width Integer. Character width used to line-wrap labels (via
 #'   `stringr::str_wrap`). Default `45`.
 #'
 #' @return A named `list` of `ggplot` objects, one per entry of
-#'   `pathway_sdaa_result`. Entries with missing or empty data are omitted.
-#'
-#'
+#'   `pathway_sdaa_result`. A plot is returned for each named entry; after filtering, some plots may contain no bars.
 #'
 #' @export
 #'
+#' @param top_n Positive integer giving the maximum number of rows per plot, ranked by absolute effect. Significant rows do not bypass this final limit.
+#'
+#' @param padj_cutoff Adjusted p-value cutoff used in the internal row-selection step. The final plot is still capped at `top_n` and is not restricted to significant rows.
+#'
+#' @details The column `logFC` may contain a model coefficient rather than a log fold change; its meaning follows `effect_type`. Input must contain `feature`, `logFC`, `p_adjust`, `group1` and `group2`. Restrict input to one contrast before plotting. Missing p-values are treated as 1 and missing effects are omitted.
+#'
+#' @seealso [fun2tax_logfc()], [pathway_sdaa()]
+#'
+#' @md
 tax2fun_logfc <- function(pathway_sdaa_result,
                                top_n = 15,
                                padj_cutoff = 0.05,
@@ -99,10 +97,20 @@ plot_pathway_logfc_one <- function(df,
 # ---- Merged from fun2tax_complete.R ----
 
 #' Plot signed taxon effects for each function
-#' @param pathway_sdaa_result Named list keyed by function ID.
-#' @param ... Arguments passed to tax2fun_logfc.
+#'
+#' Create one effect-size bar plot per function from function-oriented results. Taxon IDs in `feature` provide bar labels; no statistical analysis is rerun.
+#'
 #' @return A named list of ggplot objects.
+#'
 #' @export
+#'
+#' @param pathway_sdaa_result Named function-oriented list containing `feature`, `logFC`, `p_adjust`, `group1` and `group2` in each result table.
+#'
+#' @param ... Arguments passed to `tax2fun_logfc()`: `top_n`, `padj_cutoff` and `wrap_width`.
+#'
+#' @seealso [tax2fun_logfc()]
+#'
+#' @md
 fun2tax_logfc <- function(pathway_sdaa_result, ...) {
   .microfun_result_direction(pathway_sdaa_result, "function")
   result <- lapply(pathway_sdaa_result, function(z) {

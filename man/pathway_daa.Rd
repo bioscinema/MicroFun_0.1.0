@@ -13,34 +13,31 @@ pathway_daa(
   select = NULL,
   p.adjust = "BH",
   reference = NULL,
-  ...
+  ...,
+  maaslin2_transform = "AST"
 )
 }
 \arguments{
-\item{abundance}{A data frame or matrix containing predicted functional pathway abundance,
-with pathways/features as rows and samples as columns.
-The column names should match the sample names in metadata.
-Values should be counts or abundance measurements.}
+\item{abundance}{Numeric matrix or data frame with feature IDs as row names and unique sample IDs as column names. At least four selected samples and two observed groups are required. Choose input units appropriate for the selected backend; several backends round inputs to counts.}
 
-\item{metadata}{A data frame or tibble containing sample information.
-Must include a 'sample' column with sample identifiers matching the column names in abundance data.}
+\item{metadata}{Data frame or tibble with a unique sample-identifier column matching the full set of abundance column names before sample selection. A matching \code{sample} column is preferred; otherwise other columns are searched. Row names alone are not used. Metadata is reordered to match the selected abundance columns.}
 
 \item{group}{Character string specifying the column name in metadata that contains group information
 for differential abundance analysis.}
 
-\item{confounder}{Confounders covariates you want to adjust when doing analysis.}
+\item{confounder}{Optional character vector of metadata covariate names. Only the MaAsLin2 backend uses this argument in the current implementation.}
 
 \item{daa_method}{Character string specifying the method for differential abundance analysis.
 Available choices are:
 \itemize{
-  \item \code{"ALDEx2"}: ANOVA-Like Differential Expression tool
-  \item \code{"DESeq2"}: Differential expression analysis based on negative binomial distribution
-  \item \code{"edgeR"}: Exact test for differences between groups using negative binomial model
-  \item \code{"limma voom"}: Limma-voom framework for RNA-seq analysis
-  \item \code{"metagenomeSeq"}: Zero-inflated Gaussian mixture model
-  \item \code{"LinDA"}: Linear models for differential abundance analysis
-  \item \code{"Maaslin2"}: Multivariate Association with Linear Models
-  \item \code{"Lefser"}: Linear discriminant analysis effect size
+\item \code{"ALDEx2"}: ANOVA-Like Differential Expression tool
+\item \code{"DESeq2"}: Differential expression analysis based on negative binomial distribution
+\item \code{"edgeR"}: Exact test for differences between groups using negative binomial model
+\item \code{"limma voom"}: Limma-voom framework for RNA-seq analysis
+\item \code{"metagenomeSeq"}: Zero-inflated Gaussian mixture model
+\item \code{"LinDA"}: Linear models for differential abundance analysis
+\item \code{"Maaslin2"}: Multivariate Association with Linear Models
+\item \code{"Lefser"}: Linear discriminant analysis effect size
 }
 Default is "ALDEx2".}
 
@@ -50,86 +47,48 @@ If NULL (default), all samples are included.}
 \item{p.adjust}{Character string specifying the method for p-value adjustment.
 Choices are:
 \itemize{
-  \item \code{"BH"}: Benjamini-Hochberg procedure (default)
-  \item \code{"holm"}: Holm's step-down method
-  \item \code{"bonferroni"}: Bonferroni correction
-  \item \code{"hochberg"}: Hochberg's step-up method
-  \item \code{"fdr"}: False Discovery Rate
-  \item \code{"none"}: No adjustment
+\item \code{"BH"}: Benjamini-Hochberg procedure (default)
+\item \code{"holm"}: Holm's step-down method
+\item \code{"bonferroni"}: Bonferroni correction
+\item \code{"hochberg"}: Hochberg's step-up method
+\item \code{"fdr"}: False Discovery Rate
+\item \code{"none"}: No adjustment
 }}
 
-\item{reference}{Character string specifying the reference level for the group comparison.
-If NULL (default), the first level is used as reference.}
+\item{reference}{Optional reference group. Used by MaAsLin2 and limma-voom; other backends use their own factor-level handling. For LinDA, supply an explicit reference matching the first fitted factor level; this wrapper does not relevel its model.}
 
-\item{...}{Additional arguments passed to the specific DAA method}
+\item{...}{Reserved for compatibility; currently not forwarded to backend functions.}
+
+\item{maaslin2_transform}{Transformation used only with \code{daa_method = "Maaslin2"}: \code{"AST"} (default), \code{"LOG"}, \code{"LOGIT"} or \code{"NONE"}. MaAsLin2 uses TSS normalization before this transformation. Supplying this argument with another method raises an error.}
 }
 \value{
-A data frame containing the differential abundance analysis results. The structure of the results
-depends on the chosen DAA method. For methods that support multi-group comparisons (like LinDA),
-when there are more than two groups, the results will contain separate rows for each feature in each
-pairwise comparison between the reference group and each non-reference group. The data frame includes
-the following columns:
-\itemize{
-  \item \code{feature}: Feature/pathway identifier
-  \item \code{method}: The DAA method used
-  \item \code{group1}: Reference group
-  \item \code{group2}: Comparison group
-  \item \code{p_values}: P-values for the comparison
-  \item \code{p_adjust}: Adjusted p-values
-  \item \code{adj_method}: Method used for p-value adjustment
-}
-
-Some methods may provide additional columns, such as \code{log2FoldChange} for effect size information.
+A data frame whose columns depend on the backend. P-value backends return \code{feature}, \code{method}, group labels, \code{p_values}, \code{p_adjust} and \code{adj_method}. MaAsLin2 additionally returns \code{logFC} (the fitted coefficient) and \code{effect_type}; LinDA uses \code{log2FoldChange}. Lefser returns \code{effect_scores} without p-values or adjusted p-values. Some backends can return \code{NULL} when no result is produced.
 }
 \description{
 Performs differential abundance analysis on predicted functional pathway data using various statistical methods.
 This function supports multiple methods for analyzing differences in pathway abundance between groups,
 including popular approaches like ALDEx2, DESeq2, edgeR, and others.
 }
-\examples{
-\donttest{
-# Create example data with more samples
-abundance <- data.frame(
-  sample1 = c(10, 20, 30),
-  sample2 = c(20, 30, 40),
-  sample3 = c(30, 40, 50),
-  sample4 = c(40, 50, 60),
-  sample5 = c(50, 60, 70),
-  row.names = c("pathway1", "pathway2", "pathway3")
-)
-
-metadata <- data.frame(
-  sample = c("sample1", "sample2", "sample3", "sample4", "sample5"),
-  group = c("control", "control", "treatment", "treatment", "treatment")
-)
-
-# Run differential abundance analysis using ALDEx2
-results <- pathway_daa(abundance, metadata, "group")
-
-# Using a different method (limma voom instead of DESeq2 for this small example)
-limma_results <- pathway_daa(abundance, metadata, "group",
-                            daa_method = "limma voom")
-
-# Analyze specific samples only
-subset_results <- pathway_daa(abundance, metadata, "group",
-                             select = c("sample1", "sample2", "sample3", "sample4"))
-}
-
+\details{
+Backend names are case-sensitive: \code{ALDEx2}, \code{DESeq2}, \code{edgeR}, \verb{limma voom}, \code{metagenomeSeq}, \code{LinDA}, \code{Maaslin2} and \code{Lefser}. Adjustment via \code{p.adjust()} is applied to all returned p-values together, including multiple contrasts or test types. MaAsLin2 coefficients are transformation-specific model effects, not automatically log fold changes. Other backends do not all return an effect estimate suitable for stratified plots. Multi-group contrast behavior depends on the backend; DESeq2 currently reports the second versus first factor level.
 }
 \references{
 \itemize{
-  \item ALDEx2: Fernandes et al. (2014) Unifying the analysis of high-throughput sequencing datasets:
-        characterizing RNA-seq, 16S rRNA gene sequencing and selective growth experiments by
-        compositional data analysis. Microbiome.
-  \item DESeq2: Love et al. (2014) Moderated estimation of fold change and dispersion for
-        RNA-seq data with DESeq2. Genome Biology.
-  \item edgeR: Robinson et al. (2010) edgeR: a Bioconductor package for differential expression
-        analysis of digital gene expression data. Bioinformatics.
-  \item limma-voom: Law et al. (2014) voom: precision weights unlock linear model analysis tools
-        for RNA-seq read counts. Genome Biology.
-  \item metagenomeSeq: Paulson et al. (2013) Differential abundance analysis for microbial
-        marker-gene surveys. Nature Methods.
-  \item Maaslin2: Mallick et al. (2021) Multivariable Association Discovery in Population-scale
-        Meta-omics Studies.
+\item ALDEx2: Fernandes et al. (2014) Unifying the analysis of high-throughput sequencing datasets:
+characterizing RNA-seq, 16S rRNA gene sequencing and selective growth experiments by
+compositional data analysis. Microbiome.
+\item DESeq2: Love et al. (2014) Moderated estimation of fold change and dispersion for
+RNA-seq data with DESeq2. Genome Biology.
+\item edgeR: Robinson et al. (2010) edgeR: a Bioconductor package for differential expression
+analysis of digital gene expression data. Bioinformatics.
+\item limma-voom: Law et al. (2014) voom: precision weights unlock linear model analysis tools
+for RNA-seq read counts. Genome Biology.
+\item metagenomeSeq: Paulson et al. (2013) Differential abundance analysis for microbial
+marker-gene surveys. Nature Methods.
+\item Maaslin2: Mallick et al. (2021) Multivariable Association Discovery in Population-scale
+Meta-omics Studies.
 }
+}
+\seealso{
+\code{\link[=pathway_sdaa]{pathway_sdaa()}}, \code{\link[=pathway_annotation]{pathway_annotation()}}
 }

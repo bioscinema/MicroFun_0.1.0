@@ -1,7 +1,6 @@
 #' Dendrogram of top stratified functions per taxon (circular)
 #'
-#' @description
-#' Build a **circular dendrogram** that connects each selected taxon (e.g., Genus)
+#' @description Build a **circular dendrogram** that connects each selected taxon (e.g., Genus)
 #' to its **top-|logFC| functions** from a stratified pathway analysis result
 #' (the list returned by `pathway_sdaa()` or a similar routine). Leaf nodes are
 #' function labels colored by taxon, with point size proportional to
@@ -12,49 +11,44 @@
 #'   taxon (e.g., Genus) and contains a `data.frame` of differential results with
 #'   at least a `logFC` column and one label column among
 #'   `pathway_name`, `feature`, or `function` (the function tries them in that order).
+#'
 #' @param taxa_list Optional character vector of taxon names to include (must match
 #'   names of `pathway_sdaa_result`). If `NULL`, all taxa in the list are used.
-#' @param top_n_per_genus Integer. Number of functions to keep **per taxon** after
-#'   ranking by `abs(logFC)`. Default `5`.
+#'
 #' @param wrap_width Integer. Maximum character width for wrapping function labels.
 #'   Default `36`.
+#'
 #' @param title Character plot title. Default `"Function dendrogram"`.
+#'
 #' @param point_size_range Numeric length-2 vector specifying the range of point
 #'   sizes mapped to \eqn{|logFC|}. Default `c(1.5, 5)`.
+#'
 #' @param label_size Numeric. Text size for leaf labels. Default `2`.
 #'
-#' @details
-#' The function constructs a simple hierarchy: a root node → each selected taxon →
-#' that taxon’s top functions. It then draws a circular dendrogram using **ggraph**
-#' with edges colored by the **parent taxon** and leaf points sized by
-#' \eqn{|logFC|}. Labels are wrapped to `wrap_width`.
-#' **Note:** selection is based solely on `abs(logFC)`; if you want to enforce
-#' significance, pre-filter `pathway_sdaa_result` before calling this function.
-#'
-#' @return
-#' A named `list` with components:
+#' @return A named `list` with components:
 #' \item{plot}{A `ggraph`/`ggplot` object (the circular dendrogram).}
 #' \item{used_taxa}{Character vector of taxa actually plotted.}
 #' \item{missing_taxa}{Character vector of requested taxa not found in `pathway_sdaa_result`.}
 #'
 #' @section Expected columns per taxon table:
 #' \describe{
-#'   \item{logFC}{Numeric signed log fold-change used for ranking and point size.}
+#'   \item{logFC}{Numeric signed model effect used for ranking and point size; not necessarily a log fold change.}
 #'   \item{pathway_name / feature / function}{One of these will be used as the label (in this order).}
 #' }
 #'
-#'
-#' @examples
-#' \donttest{
-#' # Suppose `res_list` is a named list of per-genus differential tables
-#' # (each with columns like: pathway_name, feature, logFC).
-#' # p_out <- tax2fun_dendro(res_list, top_n_per_genus = 8)
-#' # p_out$plot
-#' }
-#'
 #' @param taxon_level Rank inferred from recorded analysis settings; otherwise Genus.
-#' @param top_n_per_taxon Rank-independent alias for top_n_per_genus.
+#'
 #' @export
+#'
+#' @param top_n_per_genus Legacy argument giving the number of functions per taxon; default 5. Used as the default for `top_n_per_taxon`.
+#'
+#' @param top_n_per_taxon Rank-independent number of functions retained per taxon by descending absolute `logFC`. Overrides `top_n_per_genus` when supplied.
+#'
+#' @details Leaves are selected by absolute `logFC` without p-value filtering. Pre-filter the input for significance if required. `logFC` is the stored model effect and is not necessarily a log fold change. Labels use `pathway_name`, then `feature`, then `function`. Requested taxon names are matched exactly. The plot component is `NULL` when no usable rows remain.
+#'
+#' @seealso [fun2tax_dendro()]
+#'
+#' @md
 tax2fun_dendro <- function(pathway_sdaa_result,
                                            taxa_list       = NULL,
                                            top_n_per_genus = 5,
@@ -204,13 +198,26 @@ tax2fun_dendro <- function(pathway_sdaa_result,
 #'
 #' Functions define the branches and taxa define the leaves. Taxon names come
 #' directly from the function-oriented differential results at the recorded rank.
-#' @param pathway_sdaa_result Named list keyed by function ID.
+#'
 #' @param functions Optional function IDs to retain.
+#'
 #' @param top_n_per_function Number of taxa per function ranked by absolute effect.
+#'
 #' @param taxon_level Taxonomy rank; inferred from the differential analysis.
-#' @param ... Other appearance arguments passed to tax2fun_dendro.
+#'
 #' @return List with plot, used_functions, missing_functions and taxon_level.
+#'
 #' @export
+#'
+#' @param pathway_sdaa_result Named function-oriented result list with taxon IDs in `feature` and numerical effects in `logFC`.
+#'
+#' @param ... Appearance arguments passed to `tax2fun_dendro()`, such as `wrap_width`, `title`, `point_size_range` and `label_size`. Function selection, rank and the per-function limit are controlled by the explicit wrapper arguments.
+#'
+#' @details Ranking uses absolute model effect and applies no additional significance filtering. The plot component is `NULL` if no usable rows remain.
+#'
+#' @seealso [tax2fun_dendro()]
+#'
+#' @md
 fun2tax_dendro <- function(pathway_sdaa_result, functions = NULL,
   top_n_per_function = 5, taxon_level = NULL, ...) {
   .microfun_result_direction(pathway_sdaa_result, "function")
